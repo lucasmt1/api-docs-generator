@@ -1,0 +1,27 @@
+Task: write the documentation texts for the endpoints of the controller below.
+
+Return one item in "endpoints" for EACH of these endpoint ids, using the id exactly as written: {{endpointIds}}
+
+For every endpoint:
+- title: short action title, for example "Create order".
+- summary: one sentence.
+- description: one short paragraph explaining what it does and its effects.
+- businessRules: rules enforced by this endpoint, derived from the service code and validations; empty list if none.
+- errorScenarios: for each error status listed for the endpoint, when it happens. Use only listed statuses.
+- requestExample / responseExample: realistic JSON bodies as strings, using only fields of the schemas below; empty string when there is no body.
+
+## Endpoints
+
+{{endpoints}}
+
+## Data schemas
+
+{{schemas}}
+
+## Business logic (service methods called by these endpoints)
+
+{{serviceMethods}}
+
+## Exception to HTTP status mappings
+
+{{exceptionMappings}}
