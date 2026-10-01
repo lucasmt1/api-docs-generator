@@ -37,7 +37,7 @@ public final class TypeResolver {
             entry("Integer", ScalarKind.INTEGER), entry("Short", ScalarKind.INTEGER), entry("Byte", ScalarKind.INTEGER),
             entry("Long", ScalarKind.LONG), entry("BigInteger", ScalarKind.LONG),
             entry("Float", ScalarKind.FLOAT), entry("Double", ScalarKind.DOUBLE),
-            entry("BigDecimal", ScalarKind.DECIMAL), entry("Number", ScalarKind.DECIMAL),
+            entry("BigDecimal", ScalarKind.DECIMAL), entry("Number", ScalarKind.NUMBER),
             entry("Boolean", ScalarKind.BOOLEAN),
             entry("LocalDate", ScalarKind.DATE),
             entry("LocalDateTime", ScalarKind.DATE_TIME), entry("OffsetDateTime", ScalarKind.DATE_TIME),

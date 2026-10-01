@@ -39,7 +39,7 @@ flowchart TD
     llm --> tech & api & arch
 ```
 
-The analyzed code is only read, never compiled or executed. Tables, schemas, OpenAPI and diagrams come straight from the code, so the LLM cannot invent an endpoint or a field; it only writes the text around them, as JSON validated against a schema.
+The analyzed code is only read, never compiled or executed, and symbolic links and NTFS junctions inside it are never followed. Tables, schemas, OpenAPI and diagrams come straight from the code, so the LLM cannot invent an endpoint or a field; it only writes the text around them, as JSON validated against a schema.
 
 ## Quick start
 
@@ -76,9 +76,9 @@ Paid providers work the same way: `--provider openai` (`OPENAI_API_KEY`) or `--p
 
 `custom` requires both `--model` and `--base-url`; its key is optional, so keyless local servers work without `--api-key-env`.
 
-API keys are read only from environment variables, never from a file or a flag value. A key that contains control or non-ASCII characters (for example a trailing newline pasted from a file) is rejected with an error message that never shows the key.
+API keys are read only from environment variables, never from a file or a flag value. A key that contains control or non-ASCII characters (for example a trailing newline pasted from a file) is rejected with an error message that never shows the key. If the key itself is pasted into `--api-key-env` (or any value that is not a valid variable name), the error says so without echoing it. Error text returned by an OpenAI-compatible server is copied into warnings with the key masked as `***`.
 
-Answers are cached in `.apidocs-cache/` (in the current directory, or wherever `--cache-dir` points): running again on unchanged code costs nothing and produces identical output. Use `--no-cache` to bypass it.
+Answers are cached in `.apidocs-cache/` (in the current directory, or wherever `--cache-dir` points): running again on unchanged code costs nothing and produces identical documents (only the timestamp in `generation-report.json` changes). Use `--no-cache` to bypass it.
 
 ## CLI
 
@@ -88,13 +88,13 @@ apidocs generate <project-dir> [-o DIR] [--provider P] [--model M] [--base-url U
 apidocs analyze  <project-dir> [-o FILE] [--config FILE] [-v]
 ```
 
-`generate` writes the documentation to `./api-docs` unless `-o` says otherwise. `--language` is a language tag such as `pt-BR` (default) or `en`. `-v` shows debug logs and stack traces. `analyze` runs only the static analysis, needs no LLM and prints the extracted model as JSON (to standard output, or to the file given with `-o`).
+`generate` writes the documentation to `./api-docs` unless `-o` says otherwise. `--language` is a language tag such as `pt-BR` (default) or `en`. `-v` shows debug logs and stack traces. `analyze` runs only the static analysis, needs no LLM and prints the extracted model as JSON (to standard output, or to the file given with `-o`). On Windows prefer `analyze -o FILE`: the file is always UTF-8, while redirected standard output uses the console code page.
 
 | Exit code | Meaning |
 |---|---|
 | 0 | Success (possibly with warnings) |
 | 1 | Invalid arguments or configuration, missing or unusable API key, refused output folder, unexpected error |
-| 2 | The project cannot be analyzed (missing folder, no `@RestController`) |
+| 2 | The project cannot be analyzed (missing folder, too many Java files, unparsable `pom.xml`, no `@RestController`) |
 | 3 | The LLM failed and `--strict` was given (nothing is written) |
 | 130 | Cancelled |
 
@@ -120,7 +120,8 @@ exclude:
 
 The file lives inside the repository being analyzed, so it is treated as untrusted when it comes to credentials:
 
-- Keys named like secrets (`apiKey`, `token`, `secret`, `password`...) are rejected.
+- Keys named like secrets (`apiKey`, `token`, `secret`, `password`...) are rejected at any nesting level, glossary terms included (a glossary entry called `token` needs another name).
+- Its `llm.provider` and `llm.model` can switch a run from the default `dry-run` to a paid provider, which then uses the key found in your environment. Check the file (or pass `--provider`) before running on a repository you do not trust.
 - `llm.baseUrl` is honored only for the `custom` and `ollama` providers; `gemini`, `openai` and `anthropic` always use their official endpoint.
 - `llm.apiKeyEnv` must be the provider's default variable or start with `APIDOCS_`; to read any other variable, use the `--api-key-env` flag.
 - Its `llm.model`, `llm.baseUrl` and `llm.apiKeyEnv` are ignored when the file declares an `llm.provider` other than the one actually in use (for example, when you pass a different `--provider`), so a provider's settings never leak into another provider's run.
@@ -138,7 +139,9 @@ The file lives inside the repository being analyzed, so it is treated as untrust
 | `generation-report.json` | Provider, model, tokens, duration, warnings |
 | `prompts/` | The prompts that would be sent to an LLM (`dry-run` only) |
 
-The output folder is written all at once and only replaces a previous apidocs output: a non-empty folder is overwritten only if it contains `generation-report.json` and nothing but files apidocs writes (OS metadata such as `.DS_Store` or `Thumbs.db` is tolerated). Any other folder is left untouched and the run fails with exit code 1; pick another `--output`.
+The output folder is written all at once and only replaces a previous apidocs output: a non-empty folder is overwritten only if it contains `generation-report.json` and nothing but files apidocs writes (OS metadata such as `.DS_Store` or `Thumbs.db` is tolerated). Any other folder is left untouched and the run fails with exit code 1 before the analysis and any LLM call; pick another `--output`.
+
+Controllers that share a simple name (say `UserController` in both `v1` and `v2` packages) are documented under package-qualified names such as `com_example_v1_UserController`, so OpenAPI tags and operation ids stay unique; a warning lists each one. Two `@Service` classes with the same simple name also get a warning, because their calls and errors may be merged.
 
 ## Project layout
 

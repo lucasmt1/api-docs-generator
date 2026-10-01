@@ -101,7 +101,7 @@ erDiagram
 | Entidades | 4 |
 | Services | 3 |
 | Repositories | 3 |
-| Endpoints por controller (média) | 4.3 |
+| Endpoints por controller (média) | 4,3 |
 | Maior service (métodos públicos) | OrderService (7) |
 
 ## Padrões e convenções

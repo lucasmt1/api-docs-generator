@@ -6,11 +6,13 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
-import java.util.Comparator;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,12 +41,22 @@ public final class OutputWriter {
         this.remover = remover;
     }
 
-    public void writeAtomically(Path outputDir, Map<String, String> files) {
-        Path target = outputDir.toAbsolutePath().normalize();
-        Path parent = target.getParent();
-        if (parent == null) {
-            throw new ConfigException("Invalid output directory: " + target);
+    /**
+     * Read-only early check that {@link #writeAtomically} would accept the folder, so a refused {@code --output}
+     * fails before any paid LLM call; it creates nothing. The write repeats the check (the folder may change).
+     */
+    public void verifyTarget(Path outputDir) {
+        Path target = target(outputDir);
+        try {
+            checkTarget(target);
+        } catch (IOException e) {
+            throw new ApiDocsException("Could not inspect the output directory " + target + ": " + e.getMessage(), e);
         }
+    }
+
+    public void writeAtomically(Path outputDir, Map<String, String> files) {
+        Path target = target(outputDir);
+        Path parent = target.getParent();
         String name = target.getFileName().toString();
         try {
             Files.createDirectories(parent);
@@ -67,6 +79,14 @@ public final class OutputWriter {
         } catch (IOException e) {
             throw new ApiDocsException("Could not write the documentation to " + target + ": " + e.getMessage(), e);
         }
+    }
+
+    private static Path target(Path outputDir) {
+        Path target = outputDir.toAbsolutePath().normalize();
+        if (target.getParent() == null) {
+            throw new ConfigException("Invalid output directory: " + target);
+        }
+        return target;
     }
 
     /**
@@ -101,7 +121,7 @@ public final class OutputWriter {
     private static Optional<String> firstForeignEntry(Path target) throws IOException {
         for (Path entry : entries(target)) {
             String name = entry.getFileName().toString();
-            if (name.equals(OutputFiles.PROMPTS_DIR) && Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) {
+            if (name.equals(OutputFiles.PROMPTS_DIR) && isPlainDirectory(entry)) {
                 for (Path prompt : entries(entry)) {
                     String promptName = prompt.getFileName().toString();
                     boolean markdown = promptName.endsWith(".md") && isRegularFile(prompt);
@@ -122,6 +142,12 @@ public final class OutputWriter {
 
     private static boolean isRegularFile(Path entry) {
         return Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS);
+    }
+
+    /** A real directory: not a symlink and not an NTFS junction (a directory that is also "other"). */
+    private static boolean isPlainDirectory(Path entry) throws IOException {
+        BasicFileAttributes attributes = Files.readAttributes(entry, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        return attributes.isDirectory() && !attributes.isOther();
     }
 
     private static List<Path> entries(Path directory) throws IOException {
@@ -183,14 +209,35 @@ public final class OutputWriter {
         }
     }
 
+    /** Deletes a tree without following links: a symlink or NTFS junction is removed, never what it points to. */
     static void deleteRecursively(Path path) throws IOException {
-        if (!Files.exists(path)) {
+        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
             return;
         }
-        try (Stream<Path> walk = Files.walk(path)) {
-            for (Path entry : walk.sorted(Comparator.reverseOrder()).toList()) {
-                Files.deleteIfExists(entry);
+        Files.walkFileTree(path, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (attrs.isOther()) {
+                    Files.deleteIfExists(dir);
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
             }
-        }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.deleteIfExists(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException failure) throws IOException {
+                if (failure != null) {
+                    throw failure;
+                }
+                Files.deleteIfExists(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 }

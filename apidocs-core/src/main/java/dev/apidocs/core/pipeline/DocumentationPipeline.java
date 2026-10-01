@@ -79,6 +79,8 @@ public final class DocumentationPipeline {
     public PipelineResult generate(GeneratorConfig config, LlmClient llm, ProgressListener progress,
             CancellationToken cancellation) {
         Instant start = clock.instant();
+        OutputWriter writer = new OutputWriter();
+        writer.verifyTarget(config.outputDir());
         ApiModel model = analyze(config, progress, cancellation);
         if (model.controllers().isEmpty()) {
             throw new AnalysisException("No @RestController found in " + config.projectDir()
@@ -114,7 +116,7 @@ public final class DocumentationPipeline {
         progress.onEvent(new ProgressEvent(Stage.RENDERING, "Documents rendered", counters("files", files.size()), 0, 0));
 
         cancellation.throwIfCancelled();
-        new OutputWriter().writeAtomically(config.outputDir(), files);
+        writer.writeAtomically(config.outputDir(), files);
         progress.onEvent(ProgressEvent.of(Stage.DELIVERY, config.outputDir().toString()));
         return new PipelineResult(config.outputDir(), model, warnings, narrative.usage(), narrative.llmCalls(),
                 Duration.between(start, clock.instant()));

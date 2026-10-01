@@ -38,8 +38,12 @@ public final class HttpStatuses {
 
     /** Status code of {@code HttpStatus.X}, {@code X}, a literal int or {@code HttpStatus.valueOf(n)}. */
     public static OptionalInt code(Expression expression) {
-        if (expression instanceof IntegerLiteralExpr literal) {
-            return OptionalInt.of(literal.asNumber().intValue());
+        if (expression instanceof IntegerLiteralExpr) {
+            // literals beyond the int range (uncompilable code) carry no status
+            return Annotations.integerValue(expression)
+                    .filter(value -> value.bitLength() < Integer.SIZE)
+                    .map(value -> OptionalInt.of(value.intValue()))
+                    .orElse(OptionalInt.empty());
         }
         if (expression instanceof MethodCallExpr call && call.getNameAsString().equals("valueOf")
                 && call.getArguments().size() == 1) {

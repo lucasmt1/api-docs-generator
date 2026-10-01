@@ -5,7 +5,6 @@ import dev.apidocs.core.model.ServiceInfo;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 
 final class Metrics {
 
@@ -27,7 +26,7 @@ final class Metrics {
     static List<List<String>> architecture(ApiModel model, Messages messages) {
         List<List<String>> rows = new ArrayList<>(summary(model, messages));
         String average = model.controllers().isEmpty() ? "0"
-                : String.format(Locale.ROOT, "%.1f", (double) model.endpointCount() / model.controllers().size());
+                : String.format(messages.locale(), "%.1f", (double) model.endpointCount() / model.controllers().size());
         rows.add(List.of(messages.get("metric.avgEndpoints"), average));
         String largest = model.services().stream()
                 .max(Comparator.comparingInt((ServiceInfo s) -> s.methods().size())

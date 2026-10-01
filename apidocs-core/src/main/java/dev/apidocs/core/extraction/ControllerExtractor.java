@@ -81,8 +81,12 @@ public final class ControllerExtractor {
         this.serviceNames = Set.copyOf(serviceNames);
     }
 
+    private record Candidate(TypeIndex.IndexedType type, ClassOrInterfaceDeclaration declaration,
+            boolean classResponseBody) {
+    }
+
     public List<ControllerInfo> extract(List<Warning> warnings) {
-        List<ControllerInfo> controllers = new ArrayList<>();
+        List<Candidate> candidates = new ArrayList<>();
         for (TypeIndex.IndexedType type : index.all()) {
             if (!(type.declaration() instanceof ClassOrInterfaceDeclaration declaration) || declaration.isInterface()) {
                 continue;
@@ -92,16 +96,39 @@ public final class ControllerExtractor {
                 continue;
             }
             boolean classResponseBody = restController || Annotations.has(declaration, "ResponseBody");
-            ControllerInfo controller = extractController(type, declaration, classResponseBody, warnings);
-            if (!controller.endpoints().isEmpty()) {
-                controllers.add(controller);
+            if (declaration.getMethods().stream().anyMatch(method -> isHandler(method, classResponseBody))) {
+                candidates.add(new Candidate(type, declaration, classResponseBody));
             }
+        }
+        // names become OpenAPI tags, operationId prefixes and narrative keys, so they must be unique
+        Map<String, Long> simpleNameCounts = candidates.stream()
+                .collect(Collectors.groupingBy(candidate -> candidate.type().simpleName(), Collectors.counting()));
+        List<ControllerInfo> controllers = new ArrayList<>();
+        for (Candidate candidate : candidates) {
+            String name = candidate.type().simpleName();
+            if (simpleNameCounts.get(name) > 1) {
+                String qualifiedName = candidate.type().qualifiedName();
+                String uniqueName = qualifiedName.replace('.', '_');
+                warnings.add(new Warning("CONTROLLER_NAME_COLLISION", "Controller " + name
+                        + " shares its simple name with another controller; documented as " + uniqueName,
+                        qualifiedName));
+                name = uniqueName;
+            }
+            controllers.add(extractController(candidate.type(), candidate.declaration(), candidate.classResponseBody(),
+                    name, warnings));
         }
         return controllers;
     }
 
+    /** A method documented as an endpoint: it has a request mapping and its result is the response body. */
+    private static boolean isHandler(MethodDeclaration method, boolean classResponseBody) {
+        boolean mapped = method.getAnnotations().stream().map(Annotations::simpleName)
+                .anyMatch(name -> SHORTCUT_MAPPINGS.containsKey(name) || name.equals("RequestMapping"));
+        return mapped && (classResponseBody || Annotations.has(method, "ResponseBody"));
+    }
+
     private ControllerInfo extractController(TypeIndex.IndexedType type, ClassOrInterfaceDeclaration declaration,
-            boolean classResponseBody, List<Warning> warnings) {
+            boolean classResponseBody, String name, List<Warning> warnings) {
         ParsedUnit unit = type.unit();
         List<String> basePaths = Annotations.find(declaration, "RequestMapping")
                 .map(annotation -> paths(annotation, unit, type.qualifiedName(), warnings))
@@ -112,15 +139,19 @@ public final class ControllerExtractor {
         List<EndpointInfo> endpoints = new ArrayList<>();
         Map<String, Integer> idCounts = new HashMap<>();
         for (MethodDeclaration method : declaration.getMethods()) {
-            Optional<Mapping> mapping = mapping(method, unit, type.qualifiedName() + "#" + method.getNameAsString(),
-                    warnings);
-            if (mapping.isEmpty() || !classResponseBody && !Annotations.has(method, "ResponseBody")) {
+            String location = type.qualifiedName() + "#" + method.getNameAsString();
+            Optional<Mapping> mapping = mapping(method, unit, location, warnings);
+            if (mapping.isEmpty() || !isHandler(method, classResponseBody)) {
                 continue;
+            }
+            if (mapping.get().methods().contains(HttpMethod.ANY)) {
+                warnings.add(new Warning("AMBIGUOUS_HTTP_METHOD", "@RequestMapping without method accepts every"
+                        + " HTTP method; OpenAPI documents it under GET with x-http-methods", location));
             }
             for (String basePath : basePaths) {
                 for (String subPath : mapping.get().paths()) {
                     for (HttpMethod httpMethod : mapping.get().methods()) {
-                        String baseId = declaration.getNameAsString() + "#" + method.getNameAsString();
+                        String baseId = name + "#" + method.getNameAsString();
                         int count = idCounts.merge(baseId, 1, Integer::sum);
                         String id = count == 1 ? baseId : baseId + "#" + count;
                         endpoints.add(endpoint(id, httpMethod, joinPaths(contextPath, basePath, subPath), method,
@@ -130,7 +161,7 @@ public final class ControllerExtractor {
             }
         }
         List<String> dependencies = fieldTypes.values().stream().distinct().sorted().toList();
-        return new ControllerInfo(declaration.getNameAsString(), type.qualifiedName(),
+        return new ControllerInfo(name, type.qualifiedName(),
                 joinPaths(contextPath, basePaths.get(0)), Javadocs.of(declaration), dependencies, endpoints);
     }
 

@@ -113,7 +113,7 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
                 pause(delay(attempt, response.headers().firstValue("Retry-After")));
                 continue;
             }
-            throw new LlmException("HTTP " + status + " from " + endpoint.getHost() + ": " + abbreviate(response.body()),
+            throw new LlmException("HTTP " + status + " from " + endpoint.getHost() + ": " + serverText(response.body()),
                     retryable);
         }
     }
@@ -161,14 +161,15 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
         JsonNode root;
         try {
             root = JsonSupport.mapper().readTree(body);
-        } catch (JsonProcessingException e) {
-            throw new LlmException("Invalid JSON from " + endpoint.getHost() + ": " + abbreviate(body), false, e);
+        } catch (JsonProcessingException malformedJson) {
+            // no cause: Jackson quotes the offending token, which may be an echoed API key
+            throw new LlmException("Invalid JSON from " + endpoint.getHost() + ": " + serverText(body), false);
         }
         JsonNode choice = root.path("choices").path(0);
         JsonNode message = choice.path("message");
         if (!message.isObject()) {
             throw new LlmException("Unexpected answer from " + endpoint.getHost() + " (no message in the first choice): "
-                    + abbreviate(body), false);
+                    + serverText(body), false);
         }
         String finish = choice.path("finish_reason").asText("");
         boolean refused = message.hasNonNull("refusal") && !message.get("refusal").asText().isBlank()
@@ -212,8 +213,16 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
         }
     }
 
-    private static String abbreviate(String text) {
-        String flat = text == null ? "" : text.replaceAll("\\s+", " ").strip();
+    /**
+     * Server text for an error message: the API key masked first (gateways and proxies may echo request headers),
+     * then flattened and shortened.
+     */
+    private String serverText(String text) {
+        String masked = text == null ? "" : text;
+        if (apiKey != null && !apiKey.isBlank()) {
+            masked = masked.replace(apiKey, "***");
+        }
+        String flat = masked.replaceAll("\\s+", " ").strip();
         return flat.length() > 300 ? flat.substring(0, 300) + "..." : flat;
     }
 }

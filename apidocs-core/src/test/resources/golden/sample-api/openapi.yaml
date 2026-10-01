@@ -10,8 +10,7 @@ tags:
 - name: CustomerController
   description: Cadastro e consulta de clientes da loja.
 - name: OrderController
-  description: "Criação de pedidos e controle do ciclo de vida: pagamento, envio,\
-    \ entrega e cancelamento."
+  description: "Criação de pedidos e controle do ciclo de vida: pagamento, envio, entrega e cancelamento."
 - name: ProductController
   description: Catálogo de produtos e ajustes de estoque.
 paths:
@@ -21,8 +20,7 @@ paths:
       - CustomerController
       operationId: CustomerController_create
       summary: Cadastrar cliente
-      description: Valida nome e e-mail e grava o cliente. Responde 201 com o cliente
-        criado e o cabeçalho Location.
+      description: Valida nome e e-mail e grava o cliente. Responde 201 com o cliente criado e o cabeçalho Location.
       requestBody:
         required: true
         content:
@@ -46,8 +44,7 @@ paths:
       - CustomerController
       operationId: CustomerController_get
       summary: Consultar cliente
-      description: Busca o cliente pelo identificador e devolve o registro completo
-        da entidade.
+      description: Busca o cliente pelo identificador e devolve o registro completo da entidade.
       parameters:
       - name: id
         in: path
@@ -70,8 +67,7 @@ paths:
       - OrderController
       operationId: OrderController_list
       summary: Listar pedidos
-      description: Permite filtrar por status. A página começa em 0 e o tamanho vai
-        de 1 a 100.
+      description: Permite filtrar por status. A página começa em 0 e o tamanho vai de 1 a 100.
       parameters:
       - name: status
         in: query
@@ -109,8 +105,7 @@ paths:
       - OrderController
       operationId: OrderController_create
       summary: Criar pedido
-      description: "Reserva o estoque de cada item, calcula subtotal, desconto e total\
-        \ e grava o pedido com status CREATED."
+      description: "Reserva o estoque de cada item, calcula subtotal, desconto e total e grava o pedido com status CREATED."
       requestBody:
         required: true
         content:
@@ -125,8 +120,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/OrderResponse"
         "400":
-          description: "Corpo inválido: cliente ausente, lista de itens vazia ou quantidade\
-            \ fora de 1 a 10."
+          description: "Corpo inválido: cliente ausente, lista de itens vazia ou quantidade fora de 1 a 10."
         "404":
           description: O cliente ou algum produto não existe.
         "409":
@@ -137,8 +131,7 @@ paths:
       - OrderController
       operationId: OrderController_listByCustomer
       summary: Listar pedidos do cliente
-      description: "Endpoint obsoleto: devolve todos os pedidos do cliente sem paginaç\
-        ão; prefira a listagem paginada."
+      description: "Endpoint obsoleto: devolve todos os pedidos do cliente sem paginação; prefira a listagem paginada."
       deprecated: true
       parameters:
       - name: customerId
@@ -184,8 +177,7 @@ paths:
       - OrderController
       operationId: OrderController_delete
       summary: Excluir pedido
-      description: Remove definitivamente um pedido. Apenas administradores podem
-        excluir.
+      description: Remove definitivamente um pedido. Apenas administradores podem excluir.
       x-security-expression: hasRole('ADMIN')
       parameters:
       - name: id
@@ -207,8 +199,7 @@ paths:
       - OrderController
       operationId: OrderController_cancel
       summary: Cancelar pedido
-      description: Cancelar um pedido já cancelado não tem efeito e devolve o pedido
-        como está.
+      description: Cancelar um pedido já cancelado não tem efeito e devolve o pedido como está.
       parameters:
       - name: id
         in: path
@@ -233,8 +224,7 @@ paths:
       - OrderController
       operationId: OrderController_updateStatus
       summary: Avançar status do pedido
-      description: "Apenas administradores alteram o status, sempre na ordem CREATED,\
-        \ PAID, SHIPPED, DELIVERED."
+      description: "Apenas administradores alteram o status, sempre na ordem CREATED, PAID, SHIPPED, DELIVERED."
       x-security-expression: hasRole('ADMIN')
       parameters:
       - name: id
@@ -268,8 +258,7 @@ paths:
       - ProductController
       operationId: ProductController_list
       summary: Listar produtos
-      description: "Aceita os parâmetros padrão de paginação do Spring Data (page,\
-        \ size e sort)."
+      description: "Aceita os parâmetros padrão de paginação do Spring Data (page, size e sort)."
       parameters:
       - name: page
         in: query
@@ -352,8 +341,7 @@ paths:
       - ProductController
       operationId: ProductController_adjustStock
       summary: Ajustar estoque
-      description: Valores negativos removem unidades. Apenas administradores ajustam
-        estoque.
+      description: Valores negativos removem unidades. Apenas administradores ajustam estoque.
       x-security-expression: hasRole('ADMIN')
       parameters:
       - name: id
@@ -433,6 +421,7 @@ components:
           maxLength: 120
         price:
           type: number
+          format: decimal
           minimum: 0.01
         stock:
           type: integer
@@ -493,8 +482,10 @@ components:
           format: int32
         unitPrice:
           type: number
+          format: decimal
         lineTotal:
           type: number
+          format: decimal
     OrderResponse:
       type: object
       properties:
@@ -512,10 +503,13 @@ components:
             $ref: "#/components/schemas/OrderItemResponse"
         subtotal:
           type: number
+          format: decimal
         discount:
           type: number
+          format: decimal
         total:
           type: number
+          format: decimal
         createdAt:
           type: string
           format: date-time
@@ -599,6 +593,7 @@ components:
           type: string
         price:
           type: number
+          format: decimal
         stock:
           type: integer
           format: int32

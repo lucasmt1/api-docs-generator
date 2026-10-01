@@ -94,6 +94,7 @@ class ControllerExtractorTest {
             @Controller
             public class PageController {
                 @GetMapping("/home") public String home() { return "home"; }
+                @RequestMapping("/legacy") public String legacy() { return "legacy"; }
                 @GetMapping("/api/health") @ResponseBody public String health() { return "ok"; }
             }
             """);
@@ -119,7 +120,16 @@ class ControllerExtractorTest {
                 "OrderController#list", "OrderController#all", "OrderController#all#2", "OrderController#ping");
         assertThat(controllers.get(1).endpoints()).singleElement()
                 .satisfies(e -> assertThat(e.path()).isEqualTo("/shop/api/health"));
-        assertThat(warnings).isEmpty();
+        assertThat(warnings).extracting(Warning::code).containsExactly("AMBIGUOUS_HTTP_METHOD");
+    }
+
+    @Test
+    void warnsOncePerDocumentedHandlerMappedWithoutAnHttpMethod() {
+        assertThat(warnings).singleElement().satisfies(warning -> {
+            assertThat(warning.code()).isEqualTo("AMBIGUOUS_HTTP_METHOD");
+            assertThat(warning.location()).isEqualTo("com.x.OrderController#ping");
+            assertThat(warning.message()).contains("GET");
+        });
     }
 
     @Test
@@ -234,6 +244,27 @@ class ControllerExtractorTest {
                 """);
 
         assertThat(endpoint.parameters()).extracting(ParameterInfo::name).containsExactly("X-Id");
+    }
+
+    @Test
+    void controllersSharingASimpleNameAreQualifiedAndReported() {
+        TypeIndex shared = JavaSnippets.index(
+                "package demo.v1; @RestController public class UserController { @GetMapping(\"/v1/users\") public String list() { return \"\"; } }",
+                "package demo.v2; @RestController public class UserController { @GetMapping(\"/v2/users\") public String list() { return \"\"; } }",
+                "package demo.v2; @RestController public class OrderController { @GetMapping(\"/v2/orders\") public String list() { return \"\"; } }",
+                "package demo.web; @Controller public class OrderController { @GetMapping(\"/orders\") public String page() { return \"orders\"; } }");
+        List<Warning> found = new ArrayList<>();
+
+        List<ControllerInfo> extracted = new ControllerExtractor(shared, new TypeResolver(shared, new SchemaRegistry()),
+                new ConstantResolver(shared), "", Set.of()).extract(found);
+
+        assertThat(extracted).extracting(ControllerInfo::name)
+                .containsExactly("demo_v1_UserController", "OrderController", "demo_v2_UserController");
+        assertThat(extracted).flatExtracting(ControllerInfo::endpoints).extracting(EndpointInfo::id)
+                .containsExactly("demo_v1_UserController#list", "OrderController#list", "demo_v2_UserController#list");
+        assertThat(found).extracting(Warning::code, Warning::location).containsExactly(
+                tuple("CONTROLLER_NAME_COLLISION", "demo.v1.UserController"),
+                tuple("CONTROLLER_NAME_COLLISION", "demo.v2.UserController"));
     }
 
     @Test

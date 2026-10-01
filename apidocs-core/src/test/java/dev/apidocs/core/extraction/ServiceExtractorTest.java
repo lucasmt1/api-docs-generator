@@ -1,11 +1,13 @@
 package dev.apidocs.core.extraction;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import dev.apidocs.core.analysis.TypeIndex;
 import dev.apidocs.core.model.MethodRef;
 import dev.apidocs.core.model.ServiceInfo;
 import dev.apidocs.core.model.ServiceMethod;
+import dev.apidocs.core.model.Warning;
 import dev.apidocs.core.testsupport.JavaSnippets;
 import java.util.List;
 import java.util.Set;
@@ -56,6 +58,20 @@ class ServiceExtractorTest {
 
     private ServiceInfo service(String name) {
         return services.stream().filter(s -> s.name().equals(name)).findFirst().orElseThrow();
+    }
+
+    @Test
+    void reportsServicesThatShareASimpleName() {
+        TypeIndex shared = JavaSnippets.index(
+                "package a; @Service public class UserService { }",
+                "package b; @Service public class UserService { }",
+                "package b; @Service public class MailService { }",
+                "package c; public class MailService { }");
+
+        assertThat(ServiceExtractor.nameCollisions(shared)).extracting(Warning::code, Warning::location)
+                .containsExactly(tuple("SERVICE_NAME_COLLISION", "a.UserService"),
+                        tuple("SERVICE_NAME_COLLISION", "b.UserService"));
+        assertThat(ServiceExtractor.nameCollisions(index)).isEmpty();
     }
 
     @Test

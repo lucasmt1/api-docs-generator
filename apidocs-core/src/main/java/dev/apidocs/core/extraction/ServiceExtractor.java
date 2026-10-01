@@ -15,6 +15,7 @@ import dev.apidocs.core.analysis.TypeIndex;
 import dev.apidocs.core.model.MethodRef;
 import dev.apidocs.core.model.ServiceInfo;
 import dev.apidocs.core.model.ServiceMethod;
+import dev.apidocs.core.model.Warning;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,11 +47,32 @@ public final class ServiceExtractor {
     }
 
     public static Set<String> serviceNames(TypeIndex index) {
+        return serviceTypes(index).stream()
+                .map(TypeIndex.IndexedType::simpleName)
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
+
+    /**
+     * One warning per {@code @Service} class whose simple name another service also uses: calls and errors are
+     * matched by simple name, so the facts of such services may be merged.
+     */
+    public static List<Warning> nameCollisions(TypeIndex index) {
+        List<TypeIndex.IndexedType> services = serviceTypes(index);
+        Map<String, Long> counts = services.stream()
+                .collect(Collectors.groupingBy(TypeIndex.IndexedType::simpleName, Collectors.counting()));
+        return services.stream()
+                .filter(type -> counts.get(type.simpleName()) > 1)
+                .map(type -> new Warning("SERVICE_NAME_COLLISION", "Service " + type.simpleName()
+                        + " shares its simple name with another service; their calls and errors may be merged",
+                        type.qualifiedName()))
+                .toList();
+    }
+
+    private static List<TypeIndex.IndexedType> serviceTypes(TypeIndex index) {
         return index.all().stream()
                 .filter(type -> type.declaration() instanceof ClassOrInterfaceDeclaration declaration
                         && !declaration.isInterface() && Annotations.has(declaration, "Service"))
-                .map(TypeIndex.IndexedType::simpleName)
-                .collect(Collectors.toCollection(TreeSet::new));
+                .toList();
     }
 
     public List<ServiceInfo> extract() {

@@ -51,4 +51,23 @@ class AnnotationsTest {
         assertThat(Annotations.valueText(StaticJavaParser.parseExpression("\"a\\\\d\""))).isEqualTo("a\\d");
         assertThat(Annotations.lastIdentifier(StaticJavaParser.parseExpression("Foo.class"))).isEqualTo("Foo");
     }
+
+    @Test
+    void rendersIntegerLiteralsInDecimal() {
+        assertThat(valueOf("10_000")).isEqualTo("10000");
+        assertThat(valueOf("0x10")).isEqualTo("16");
+        assertThat(valueOf("0b101")).isEqualTo("5");
+        assertThat(valueOf("017")).isEqualTo("15");
+        assertThat(valueOf("0")).isEqualTo("0");
+        assertThat(valueOf("1_000_000L")).isEqualTo("1000000");
+        assertThat(valueOf("0xFFFFFFFF")).isEqualTo("-1");
+        assertThat(valueOf("-0x10")).isEqualTo("-16");
+        assertThat(valueOf("-2147483648")).isEqualTo("-2147483648");
+        assertThat(valueOf("-9223372036854775808L")).isEqualTo("-9223372036854775808");
+        assertThat(valueOf("99999999999")).isEqualTo("99999999999");
+    }
+
+    private static String valueOf(String expression) {
+        return Annotations.valueText(StaticJavaParser.parseExpression(expression));
+    }
 }

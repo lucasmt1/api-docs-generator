@@ -40,6 +40,7 @@ public final class ModelAssembler {
         List<RepositoryInfo> repositories = sorted(new RepositoryExtractor(index).extract(), RepositoryInfo::name);
         Set<String> repositoryNames = repositories.stream().map(RepositoryInfo::name).collect(Collectors.toSet());
         Set<String> serviceNames = ServiceExtractor.serviceNames(index);
+        warnings.addAll(ServiceExtractor.nameCollisions(index));
         List<ServiceInfo> services = sorted(new ServiceExtractor(index, serviceNames, repositoryNames).extract(),
                 ServiceInfo::name);
         List<ControllerInfo> controllers = new ControllerExtractor(index, resolver, new ConstantResolver(index),

@@ -74,6 +74,13 @@
         <artifactId>picocli</artifactId>
         <version>${picocli.version}</version>
       </dependency>
+      <!-- the version the anthropic-java tree asks for (and the CLI already ships); without this pin the test-only
+           swagger-parser tree downgrades the core module to 2.0.9, which ignores slf4j.internal.verbosity -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>2.0.16</version>
+      </dependency>
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
@@ -104,6 +111,10 @@
           <version>3.6.0</version>
           <configuration>
             <argLine>@{argLine} "-Djdk.net.unixdomain.tmpdir=${project.build.directory}"</argLine>
+            <systemPropertyVariables>
+              <!-- swagger-parser brings SLF4J without a provider; silence its "No providers" notice -->
+              <slf4j.internal.verbosity>ERROR</slf4j.internal.verbosity>
+            </systemPropertyVariables>
           </configuration>
         </plugin>
         <plugin>

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.apidocs.core.AnalysisException;
 import dev.apidocs.core.CancellationToken;
 import dev.apidocs.core.CancelledException;
+import dev.apidocs.core.ConfigException;
 import dev.apidocs.core.ai.DryRunLlmClient;
 import dev.apidocs.core.ai.LlmException;
 import dev.apidocs.core.config.ConfigOverrides;
@@ -134,6 +135,22 @@ class DocumentationPipelineTest {
         PipelineResult lenient = pipeline.generate(config(project, false), FakeLlmClient.byPurpose(Map.of()),
                 ProgressListener.NONE, new CancellationToken());
         assertThat(lenient.warnings()).extracting(Warning::code).contains("LLM_OUTPUT_INVALID");
+    }
+
+    @Test
+    void refusesAForeignOutputFolderBeforeAnalysisOrAnyLlmCall() throws IOException {
+        Path project = TinyProject.write(dir.resolve("tiny"));
+        Files.createDirectories(dir.resolve("out"));
+        Files.writeString(dir.resolve("out/notes.txt"), "mine");
+        FakeLlmClient llm = narratives();
+        List<ProgressEvent> events = new ArrayList<>();
+
+        assertThatThrownBy(() -> pipeline.generate(config(project, false), llm, events::add, new CancellationToken()))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("notes.txt");
+        assertThat(llm.requests()).isEmpty();
+        assertThat(events).isEmpty();
+        assertThat(Files.readString(dir.resolve("out/notes.txt"))).isEqualTo("mine");
     }
 
     @Test

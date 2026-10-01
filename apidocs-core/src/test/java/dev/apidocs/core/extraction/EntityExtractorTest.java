@@ -1,6 +1,7 @@
 package dev.apidocs.core.extraction;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import dev.apidocs.core.analysis.TypeIndex;
 import dev.apidocs.core.model.EntityField;
@@ -80,6 +81,23 @@ class EntityExtractorTest {
         assertThat(entity("Order").relationships()).containsExactly(
                 new Relationship("customer", RelationKind.MANY_TO_ONE, "Customer", ""),
                 new Relationship("items", RelationKind.ONE_TO_MANY, "OrderItem", "order"));
+    }
+
+    @Test
+    void readsColumnLengthsWrittenWithUnderscoresOrHex() {
+        TypeIndex lengthIndex = JavaSnippets.index("""
+                package com.x;
+                @Entity public class Note {
+                    @Column(length = 1_000) private String body;
+                    @Column(length = 0x40) private String title;
+                }
+                """);
+
+        EntityInfo note = new EntityExtractor(lengthIndex, new TypeResolver(lengthIndex, new SchemaRegistry()))
+                .extract().get(0);
+
+        assertThat(note.fields()).extracting(EntityField::name, EntityField::length)
+                .containsExactly(tuple("body", 1000), tuple("title", 64));
     }
 
     @Test

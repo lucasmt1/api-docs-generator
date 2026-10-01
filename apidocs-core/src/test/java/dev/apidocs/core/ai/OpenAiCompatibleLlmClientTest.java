@@ -165,6 +165,24 @@ class OpenAiCompatibleLlmClientTest {
     }
 
     @Test
+    void masksTheApiKeyInServerTextCopiedIntoErrors() {
+        String key = "AIzaSyFAKE0123456789abcdef";
+        try (StubHttpServer server = new StubHttpServer()) {
+            server.enqueue(Reply.json(401, "{\"error\":\"invalid header Authorization: Bearer " + key + "\"}"))
+                    .enqueue(Reply.json(200, key + " is not a valid key"))
+                    .enqueue(Reply.json(200, "{\"choices\":[],\"echo\":\"" + key + "\"}"));
+            OpenAiCompatibleLlmClient client = client(server, key, new Options(JsonMode.JSON_OBJECT, true, "max_tokens"));
+
+            for (String expected : List.of("HTTP 401", "Invalid JSON", "no message")) {
+                assertThatThrownBy(() -> client.complete(request()))
+                        .isInstanceOfSatisfying(LlmException.class,
+                                e -> assertThat(chainOf(e)).contains("***").doesNotContain(key))
+                        .hasMessageContaining(expected);
+            }
+        }
+    }
+
+    @Test
     void mapsFinishReasons() {
         try (StubHttpServer server = new StubHttpServer()) {
             server.enqueue(Reply.json(200, finishing("length"))).enqueue(Reply.json(200, finishing("content_filter")));

@@ -41,6 +41,7 @@ public final class OpenApiDocument {
 
     private static final YAMLMapper YAML = YAMLMapper.builder()
             .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+            .disable(YAMLGenerator.Feature.SPLIT_LINES)
             .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
             .enable(YAMLGenerator.Feature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
             .build();

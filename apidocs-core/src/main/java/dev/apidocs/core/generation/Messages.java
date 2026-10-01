@@ -22,6 +22,11 @@ public final class Messages {
         return new Messages(bundle, locale);
     }
 
+    /** Locale of the document language, for numbers written outside the bundle patterns. */
+    public Locale locale() {
+        return locale;
+    }
+
     /** Arguments are formatted with {@link MessageFormat}; pass numbers as strings to avoid locale grouping. */
     public String get(String key, Object... args) {
         String pattern = bundle.getString(key);

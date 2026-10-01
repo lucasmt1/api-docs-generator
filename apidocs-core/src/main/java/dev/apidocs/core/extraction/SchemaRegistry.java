@@ -90,6 +90,7 @@ public final class SchemaRegistry {
                 case FLOAT -> "Float";
                 case DOUBLE -> "Double";
                 case DECIMAL -> "BigDecimal";
+                case NUMBER -> "Number";
                 case BOOLEAN -> "Boolean";
                 case DATE -> "LocalDate";
                 case DATE_TIME -> "DateTime";

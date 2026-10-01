@@ -75,6 +75,24 @@ class LlmClientFactoryTest {
     }
 
     @Test
+    void neverEchoesAnApiKeyPastedAsTheVariableName() {
+        String pasted = "sk-proj-AbC123/xyz+9";
+        LlmSettings openai = new LlmSettings(ProviderPreset.OPENAI, "gpt-x", ProviderPreset.OPENAI.baseUrl(), pasted,
+                "high");
+
+        assertThatThrownBy(() -> factory.create(openai, Map.of(), cache, true))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("--api-key-env")
+                .hasMessageContaining("not a valid environment variable name")
+                .hasMessageNotContaining(pasted);
+        LlmSettings named = new LlmSettings(ProviderPreset.OPENAI, "gpt-x", ProviderPreset.OPENAI.baseUrl(),
+                "MY_OPENAI_KEY", "high");
+        assertThatThrownBy(() -> factory.create(named, Map.of(), cache, true))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("MY_OPENAI_KEY");
+    }
+
+    @Test
     void reportsMalformedBaseUrls() {
         LlmSettings custom = new LlmSettings(ProviderPreset.CUSTOM, "m", "http://exa mple/v1", "", "high");
 

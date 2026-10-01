@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.apidocs.core.AnalysisException;
 import dev.apidocs.core.model.Warning;
+import dev.apidocs.core.testsupport.Junctions;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -87,6 +88,20 @@ class SourceLoaderTest {
         LoadedSources sources = new SourceLoader().load(dir, List.of(), SourceLimits.DEFAULT);
 
         assertThat(sources.javaFiles()).extracting(SourceFile::relativePath).containsExactly("src/main/java/Real.java");
+        assertThat(sources.warnings()).isEmpty();
+    }
+
+    @Test
+    void neverEntersDirectoryJunctions() throws IOException, InterruptedException {
+        write("project/src/main/java/demo/Real.java", "class Real {}");
+        Files.createDirectories(dir.resolve("outside/demo"));
+        Files.writeString(dir.resolve("outside/demo/SecretController.java"), "class SecretController {}");
+        Junctions.create(dir.resolve("project/src/main/java/linked"), dir.resolve("outside"));
+
+        LoadedSources sources = new SourceLoader().load(dir.resolve("project"), List.of(), SourceLimits.DEFAULT);
+
+        assertThat(sources.javaFiles()).extracting(SourceFile::relativePath)
+                .containsExactly("src/main/java/demo/Real.java");
         assertThat(sources.warnings()).isEmpty();
     }
 

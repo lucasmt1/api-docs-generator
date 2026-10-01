@@ -17,6 +17,13 @@ class HttpStatusesTest {
     }
 
     @Test
+    void ignoresIntegerLiteralsOutsideTheIntRange() {
+        assertThat(HttpStatuses.code(StaticJavaParser.parseExpression("99999999999"))).isEmpty();
+        assertThat(HttpStatuses.code(StaticJavaParser.parseExpression("HttpStatus.valueOf(99999999999)"))).isEmpty();
+        assertThat(HttpStatuses.code(StaticJavaParser.parseExpression("2_01"))).hasValue(201);
+    }
+
+    @Test
     void providesReasonPhrases() {
         assertThat(HttpStatuses.reason(404)).isEqualTo("Not Found");
         assertThat(HttpStatuses.reason(299)).isEqualTo("HTTP 299");

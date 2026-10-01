@@ -6,6 +6,7 @@ import com.github.javaparser.ast.expr.BooleanLiteralExpr;
 import com.github.javaparser.ast.expr.ClassExpr;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
+import com.github.javaparser.ast.expr.IntegerLiteralExpr;
 import com.github.javaparser.ast.expr.LiteralStringValueExpr;
 import com.github.javaparser.ast.expr.LongLiteralExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
@@ -16,7 +17,9 @@ import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.expr.UnaryExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import java.math.BigInteger;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /** Helpers to read annotations regardless of whether they are written with simple or qualified names. */
@@ -91,8 +94,15 @@ public final class Annotations {
         return expression.toString();
     }
 
-    /** Literal value as plain text: strings unquoted and unescaped, numbers without suffix, negatives kept. */
+    /**
+     * Literal value as plain text: strings unquoted and unescaped, integers in decimal (underscores, radix prefixes
+     * and suffixes resolved), negatives kept.
+     */
     public static String valueText(Expression expression) {
+        Optional<BigInteger> integer = integerValue(expression);
+        if (integer.isPresent()) {
+            return integer.get().toString();
+        }
         if (expression instanceof StringLiteralExpr literal) {
             return literal.asString();
         }
@@ -109,5 +119,43 @@ public final class Annotations {
             return "-" + valueText(unary.getExpression());
         }
         return expression.toString();
+    }
+
+    /**
+     * Value of an int or long literal (optionally negated) as Java evaluates it, so {@code 10_000}, {@code 0x10},
+     * {@code 0b101}, {@code 017} and {@code 5L} are all understood; empty for other or malformed expressions.
+     * Literals too large for their type (uncompilable code) keep their written magnitude.
+     */
+    public static Optional<BigInteger> integerValue(Expression expression) {
+        if (expression instanceof UnaryExpr unary && unary.getOperator() == UnaryExpr.Operator.MINUS) {
+            return integerValue(unary.getExpression()).map(BigInteger::negate);
+        }
+        boolean isLong = expression instanceof LongLiteralExpr;
+        if (!isLong && !(expression instanceof IntegerLiteralExpr)) {
+            return Optional.empty();
+        }
+        String digits = ((LiteralStringValueExpr) expression).getValue().replace("_", "");
+        if (isLong) {
+            digits = digits.substring(0, digits.length() - 1);
+        }
+        int radix = 10;
+        String prefix = digits.length() > 1 ? digits.substring(0, 2).toLowerCase(Locale.ROOT) : "";
+        if (prefix.equals("0x") || prefix.equals("0b")) {
+            radix = prefix.equals("0x") ? 16 : 2;
+            digits = digits.substring(2);
+        } else if (digits.length() > 1 && digits.startsWith("0")) {
+            radix = 8;
+            digits = digits.substring(1);
+        }
+        try {
+            BigInteger value = new BigInteger(digits, radix);
+            int bits = isLong ? Long.SIZE : Integer.SIZE;
+            // hex, octal and binary literals are two's complement bit patterns: 0xFFFFFFFF is -1
+            return Optional.of(radix != 10 && value.bitLength() == bits
+                    ? value.subtract(BigInteger.ONE.shiftLeft(bits))
+                    : value);
+        } catch (NumberFormatException malformed) {
+            return Optional.empty();
+        }
     }
 }

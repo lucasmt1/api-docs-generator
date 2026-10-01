@@ -34,6 +34,7 @@ class TypeResolverTest {
             public class Holder<T> {
                 int a; String b; List<Item> c; Map<String, Integer> d; Optional<Item> e; Page<Item> f; Status g;
                 byte[] h; Object i; ApiResponse<Item> j; T k; java.time.Instant l; Set<Status> m;
+                java.math.BigDecimal n; Number o;
             }
             """,
             "package com.x; public record Item(String name) {}",
@@ -75,6 +76,8 @@ class TypeResolverTest {
         assertThat(field("k")).isEqualTo(new ScalarType(ScalarKind.STRING));
         assertThat(field("l")).isEqualTo(new ScalarType(ScalarKind.DATE_TIME));
         assertThat(field("m")).isEqualTo(new ArrayOf(new EnumRef("Status")));
+        assertThat(field("n")).isEqualTo(new ScalarType(ScalarKind.DECIMAL));
+        assertThat(field("o")).isEqualTo(new ScalarType(ScalarKind.NUMBER));
     }
 
     @Test

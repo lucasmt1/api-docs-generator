@@ -124,7 +124,7 @@ Resposta:
 
 ```json
 {
-  "content": [ ],
+  "content": [],
   "page": 0,
   "size": 20,
   "totalElements": 0,
@@ -400,7 +400,7 @@ Apenas administradores cadastram produtos.
 | --- | --- | --- | --- | --- |
 | `sku` | `string` | sim | `@NotBlank` `@Size(max=32)` `@Pattern(regexp=^[A-Z0-9-]+$)` |  |
 | `name` | `string` | sim | `@NotBlank` `@Size(max=120)` |  |
-| `price` | `number` | sim | `@NotNull` `@DecimalMin(value=0.01)` |  |
+| `price` | `number (decimal)` | sim | `@NotNull` `@DecimalMin(value=0.01)` |  |
 | `stock` | `integer (int32)` | sim | `@PositiveOrZero` |  |
 
 **Respostas**
@@ -526,7 +526,7 @@ Data required to register a new product in the catalog.
 | --- | --- | --- | --- | --- |
 | `sku` | `string` | sim | `@NotBlank` `@Size(max=32)` `@Pattern(regexp=^[A-Z0-9-]+$)` |  |
 | `name` | `string` | sim | `@NotBlank` `@Size(max=120)` |  |
-| `price` | `number` | sim | `@NotNull` `@DecimalMin(value=0.01)` |  |
+| `price` | `number (decimal)` | sim | `@NotNull` `@DecimalMin(value=0.01)` |  |
 | `stock` | `integer (int32)` | sim | `@PositiveOrZero` |  |
 
 ### Customer
@@ -561,8 +561,8 @@ Data required to register a new product in the catalog.
 | `productId` | `integer (int64)` | não |  |  |
 | `sku` | `string` | não |  |  |
 | `quantity` | `integer (int32)` | sim |  |  |
-| `unitPrice` | `number` | não |  |  |
-| `lineTotal` | `number` | não |  |  |
+| `unitPrice` | `number (decimal)` | não |  |  |
+| `lineTotal` | `number (decimal)` | não |  |  |
 
 ### OrderResponse
 
@@ -572,9 +572,9 @@ Data required to register a new product in the catalog.
 | `customerId` | `integer (int64)` | não |  |  |
 | `status` | `OrderStatus` | não |  |  |
 | `items` | `array<OrderItemResponse>` | não |  |  |
-| `subtotal` | `number` | não |  |  |
-| `discount` | `number` | não |  |  |
-| `total` | `number` | não |  |  |
+| `subtotal` | `number (decimal)` | não |  |  |
+| `discount` | `number (decimal)` | não |  |  |
+| `total` | `number (decimal)` | não |  |  |
 | `createdAt` | `string (date-time)` | não |  |  |
 
 ### OrderStatus
@@ -618,7 +618,7 @@ Page of results returned by list endpoints.
 | `id` | `integer (int64)` | não |  |  |
 | `sku` | `string` | não |  |  |
 | `name` | `string` | não |  |  |
-| `price` | `number` | não |  |  |
+| `price` | `number (decimal)` | não |  |  |
 | `stock` | `integer (int32)` | sim |  |  |
 
 ### StockAdjustmentRequest

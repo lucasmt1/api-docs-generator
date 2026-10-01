@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.apidocs.core.ConfigException;
+import dev.apidocs.core.testsupport.Junctions;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -166,6 +167,58 @@ class OutputWriterTest {
         try (Stream<Path> siblings = Files.list(dir)) {
             assertThat(siblings.map(p -> p.getFileName().toString())).containsExactlyInAnyOrder(names);
         }
+    }
+
+    @Test
+    void verifiesATargetWithoutCreatingOrChangingAnything() throws IOException {
+        Path missing = dir.resolve("missing/docs");
+        writer.verifyTarget(missing);
+        assertThat(dir.resolve("missing")).doesNotExist();
+
+        Path previous = dir.resolve("previous");
+        writer.writeAtomically(previous, Map.of("generation-report.json", "{}", "README.md", "old"));
+        writer.verifyTarget(previous);
+        assertThat(Files.readString(previous.resolve("README.md"))).isEqualTo("old");
+
+        Path foreign = dir.resolve("foreign");
+        Files.createDirectories(foreign);
+        Files.writeString(foreign.resolve("notes.txt"), "mine");
+        assertThatThrownBy(() -> writer.verifyTarget(foreign))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("notes.txt");
+        assertThat(Files.readString(foreign.resolve("notes.txt"))).isEqualTo("mine");
+    }
+
+    @Test
+    void refusesAPreviousOutputWhosePromptsFolderIsAJunction() throws IOException, InterruptedException {
+        Path out = dir.resolve("docs");
+        Files.createDirectories(out);
+        Files.writeString(out.resolve("generation-report.json"), "{}");
+        Files.createDirectories(dir.resolve("elsewhere"));
+        Files.writeString(dir.resolve("elsewhere/notes.md"), "mine");
+        Junctions.create(out.resolve("prompts"), dir.resolve("elsewhere"));
+
+        assertThatThrownBy(() -> writer.writeAtomically(out, Map.of("generation-report.json", "{\"v\":2}")))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("'prompts'");
+        assertThat(Files.readString(dir.resolve("elsewhere/notes.md"))).isEqualTo("mine");
+    }
+
+    @Test
+    void deletesJunctionsWithoutTouchingTheirTargets() throws IOException, InterruptedException {
+        Files.createDirectories(dir.resolve("elsewhere"));
+        Files.writeString(dir.resolve("elsewhere/notes.md"), "mine");
+        Files.createDirectories(dir.resolve("stale"));
+        Files.writeString(dir.resolve("stale/model.json"), "{}");
+        Junctions.create(dir.resolve("stale/prompts"), dir.resolve("elsewhere"));
+        Junctions.create(dir.resolve(".docs.apidocs-tmp-1"), dir.resolve("elsewhere"));
+
+        OutputWriter.deleteRecursively(dir.resolve("stale"));
+        writer.writeAtomically(dir.resolve("docs"), Map.of("model.json", "{}"));
+
+        assertThat(dir.resolve("stale")).doesNotExist();
+        assertThat(dir.resolve(".docs.apidocs-tmp-1")).doesNotExist();
+        assertThat(Files.readString(dir.resolve("elsewhere/notes.md"))).isEqualTo("mine");
     }
 
     @Test

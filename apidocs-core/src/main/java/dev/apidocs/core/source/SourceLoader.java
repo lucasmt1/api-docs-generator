@@ -44,7 +44,8 @@ public final class SourceLoader {
                     if (dir.equals(root)) {
                         return FileVisitResult.CONTINUE;
                     }
-                    if (isIgnoredDirectory(root, dir) || isTestSourceRoot(dir)) {
+                    // NTFS junctions are reported as directories that are also "other": like symlinks, never entered
+                    if (attrs.isOther() || isIgnoredDirectory(root, dir) || isTestSourceRoot(dir)) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
                     return FileVisitResult.CONTINUE;

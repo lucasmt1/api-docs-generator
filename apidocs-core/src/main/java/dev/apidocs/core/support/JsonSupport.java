@@ -22,7 +22,9 @@ public final class JsonSupport {
             .withObjectIndenter(new DefaultIndenter("  ", "\n"))
             .withArrayIndenter(new DefaultIndenter("  ", "\n"))
             .withSeparators(Separators.createDefaultInstance()
-                    .withObjectFieldValueSpacing(Separators.Spacing.AFTER)));
+                    .withObjectFieldValueSpacing(Separators.Spacing.AFTER)
+                    .withArrayEmptySeparator("")
+                    .withObjectEmptySeparator("")));
 
     private JsonSupport() {
     }

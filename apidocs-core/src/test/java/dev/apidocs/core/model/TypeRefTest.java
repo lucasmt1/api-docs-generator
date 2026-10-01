@@ -29,7 +29,10 @@ class TypeRefTest {
     @Test
     void exposesOpenApiTypeAndFormat() {
         assertThat(ScalarKind.DECIMAL.openApiType()).isEqualTo("number");
-        assertThat(ScalarKind.DECIMAL.openApiFormat()).isNull();
+        assertThat(ScalarKind.DECIMAL.openApiFormat()).isEqualTo("decimal");
+        assertThat(new ScalarType(ScalarKind.DECIMAL).display()).isEqualTo("number (decimal)");
+        assertThat(ScalarKind.NUMBER.openApiType()).isEqualTo("number");
+        assertThat(ScalarKind.NUMBER.openApiFormat()).isNull();
         assertThat(ScalarKind.UUID.openApiFormat()).isEqualTo("uuid");
     }
 }

@@ -8,19 +8,24 @@ import dev.apidocs.core.ai.narrative.ErrorScenario;
 import dev.apidocs.core.ai.narrative.TechnicalDocNarrative;
 import dev.apidocs.core.extraction.ModelExtractor;
 import dev.apidocs.core.model.ApiModel;
+import dev.apidocs.core.model.Warning;
 import dev.apidocs.core.source.SourceLimits;
 import dev.apidocs.core.testsupport.ModelFixtures;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.tags.Tag;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import io.swagger.v3.parser.core.models.ParseOptions;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class OpenApiDocumentTest {
 
@@ -65,6 +70,18 @@ class OpenApiDocumentTest {
     }
 
     @Test
+    void keepsLongTextsOnOneYamlLine() {
+        String overview = "Orders system that reserves stock for every item, applies discounts above the threshold"
+                + " and keeps the full history of each order status change";
+        NarrativeSet narratives = new NarrativeSet(Map.of(),
+                new TechnicalDocNarrative(overview, List.of(), List.of(), "", List.of()), null);
+
+        String yaml = new OpenApiDocument().render(ModelFixtures.orderApi(), narratives);
+
+        assertThat(yaml.lines()).anySatisfy(line -> assertThat(line).startsWith("  description: ").contains(overview));
+    }
+
+    @Test
     void mapsValidationConstraintsIntoSchemas() {
         OpenAPI api = parse(new OpenApiDocument().render(ModelFixtures.orderApi(), NarrativeSet.empty())).getOpenAPI();
 
@@ -78,6 +95,10 @@ class OpenApiDocumentTest {
         assertThat(quantity.getMinimum()).isEqualByComparingTo(BigDecimal.ONE);
         assertThat(quantity.getMaximum()).isEqualByComparingTo(BigDecimal.TEN);
         assertThat(api.getComponents().getSchemas().get("OrderStatus").getEnum()).containsExactly("CREATED", "PAID");
+        Schema<?> orderResponse = api.getComponents().getSchemas().get("OrderResponse");
+        Schema<?> total = orderResponse.getProperties().get("total");
+        assertThat(total.getTypes()).containsExactly("number");
+        assertThat(total.getFormat()).isEqualTo("decimal");
     }
 
     @Test
@@ -88,5 +109,68 @@ class OpenApiDocumentTest {
 
         assertThat(parse(yaml).getMessages()).isEmpty();
         assertThat(yaml).contains("/shop/api/orders/{id}/cancel:").contains("PagedModel_ProductResponse:");
+    }
+
+    private static ApiModel extract(Path project, Map<String, String> sources) throws IOException {
+        for (Map.Entry<String, String> source : sources.entrySet()) {
+            Path file = project.resolve("src/main/java").resolve(source.getKey());
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, source.getValue());
+        }
+        return new ModelExtractor().extract(project, List.of(), SourceLimits.DEFAULT);
+    }
+
+    @Test
+    void controllersSharingASimpleNameKeepTagsAndOperationIdsUnique(@TempDir Path project) throws IOException {
+        String controller = """
+                package demo.%s;
+                @RestController
+                @RequestMapping("/%s/users")
+                public class UserController {
+                    @GetMapping
+                    public String list() { return ""; }
+                }
+                """;
+        ApiModel model = extract(project, Map.of(
+                "demo/v1/UserController.java", controller.formatted("v1", "v1"),
+                "demo/v2/UserController.java", controller.formatted("v2", "v2")));
+
+        SwaggerParseResult result = parse(new OpenApiDocument().render(model, NarrativeSet.empty()));
+
+        assertThat(result.getMessages()).isEmpty();
+        assertThat(result.getOpenAPI().getTags()).extracting(Tag::getName)
+                .containsExactly("demo_v1_UserController", "demo_v2_UserController");
+        assertThat(result.getOpenAPI().getPaths().values()).extracting(path -> path.getGet().getOperationId())
+                .containsExactlyInAnyOrder("demo_v1_UserController_list", "demo_v2_UserController_list");
+        assertThat(model.warnings()).extracting(Warning::code)
+                .containsExactly("CONTROLLER_NAME_COLLISION", "CONTROLLER_NAME_COLLISION");
+    }
+
+    @Test
+    void numericLiteralsWrittenWithUnderscoresOrHexKeepTheirConstraints(@TempDir Path project) throws IOException {
+        ApiModel model = extract(project, Map.of(
+                "demo/StockController.java", """
+                        package demo;
+                        @RestController
+                        public class StockController {
+                            @PostMapping("/stock")
+                            public String adjust(@RequestBody Adjustment body) { return ""; }
+
+                            @ResponseStatus(99999999999)
+                            @GetMapping("/stock")
+                            public String read() { return ""; }
+                        }
+                        """,
+                "demo/Adjustment.java", """
+                        package demo;
+                        public record Adjustment(@Max(10_000) int quantity, @Min(0x10) long batch) { }
+                        """));
+
+        OpenAPI api = parse(new OpenApiDocument().render(model, NarrativeSet.empty())).getOpenAPI();
+
+        Schema<?> adjustment = api.getComponents().getSchemas().get("Adjustment");
+        assertThat(adjustment.getProperties().get("quantity").getMaximum()).isEqualByComparingTo("10000");
+        assertThat(adjustment.getProperties().get("batch").getMinimum()).isEqualByComparingTo("16");
+        assertThat(api.getPaths().get("/stock").getGet().getResponses()).containsOnlyKeys("200");
     }
 }

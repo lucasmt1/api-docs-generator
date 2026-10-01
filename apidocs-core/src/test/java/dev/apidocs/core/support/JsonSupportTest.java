@@ -8,6 +8,8 @@ import dev.apidocs.core.model.ScalarType;
 import dev.apidocs.core.model.SchemaInfo;
 import dev.apidocs.core.model.SchemaKind;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 
 class JsonSupportTest {
@@ -22,5 +24,12 @@ class JsonSupportTest {
 
         assertThat(json).contains("\"type\": \"scalar\"").contains("\"kind\": \"DECIMAL\"");
         assertThat(json).doesNotContain("\r").endsWith("}\n");
+    }
+
+    @Test
+    void writesEmptyCollectionsCompactly() {
+        String json = JsonSupport.toPrettyJson(new TreeMap<>(Map.of("items", List.of(), "extra", Map.of())));
+
+        assertThat(json).isEqualTo("{\n  \"extra\": {},\n  \"items\": []\n}\n");
     }
 }
