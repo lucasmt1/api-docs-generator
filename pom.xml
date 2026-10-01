@@ -14,6 +14,7 @@
 
   <modules>
     <module>apidocs-core</module>
+    <module>apidocs-cli</module>
   </modules>
 
   <properties>

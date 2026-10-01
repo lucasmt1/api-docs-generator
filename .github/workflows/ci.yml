@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build and test
+        run: mvn -B -ntp verify
+      - name: Compile the sample API
+        run: mvn -B -ntp -f examples/sample-api/pom.xml compile
+      - name: Dry-run on the sample API
+        run: java -jar apidocs-cli/target/apidocs.jar generate examples/sample-api --output target/sample-docs
+      - name: Upload the generated documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-docs
+          path: target/sample-docs
