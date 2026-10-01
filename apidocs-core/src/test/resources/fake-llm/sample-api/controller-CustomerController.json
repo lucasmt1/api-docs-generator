@@ -1,0 +1,30 @@
+{
+  "controllerSummary": "Cadastro e consulta de clientes da loja.",
+  "endpoints": [
+    {
+      "endpointId": "CustomerController#create",
+      "title": "Cadastrar cliente",
+      "summary": "Cadastra um novo cliente.",
+      "description": "Valida nome e e-mail e grava o cliente. Responde 201 com o cliente criado e o cabeçalho Location.",
+      "businessRules": ["O e-mail não pode estar em uso por outro cliente."],
+      "errorScenarios": [
+        {"status": 400, "when": "Nome ou e-mail ausentes ou com formato inválido."},
+        {"status": 409, "when": "Já existe um cliente com o e-mail informado."}
+      ],
+      "requestExample": "{\"name\": \"Ana Souza\", \"email\": \"ana@example.com\"}",
+      "responseExample": "{\"id\": 1, \"name\": \"Ana Souza\", \"email\": \"ana@example.com\"}"
+    },
+    {
+      "endpointId": "CustomerController#get",
+      "title": "Consultar cliente",
+      "summary": "Retorna os dados de um cliente.",
+      "description": "Busca o cliente pelo identificador e devolve o registro completo da entidade.",
+      "businessRules": [],
+      "errorScenarios": [
+        {"status": 404, "when": "Nenhum cliente possui o id informado."}
+      ],
+      "requestExample": "",
+      "responseExample": "{\"id\": 1, \"name\": \"Ana Souza\", \"email\": \"ana@example.com\", \"password\": \"segredo\"}"
+    }
+  ]
+}

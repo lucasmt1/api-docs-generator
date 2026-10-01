@@ -1,0 +1,107 @@
+{
+  "controllerSummary": "Criação de pedidos e controle do ciclo de vida: pagamento, envio, entrega e cancelamento.",
+  "endpoints": [
+    {
+      "endpointId": "OrderController#list",
+      "title": "Listar pedidos",
+      "summary": "Lista pedidos paginados, do mais recente para o mais antigo.",
+      "description": "Permite filtrar por status. A página começa em 0 e o tamanho vai de 1 a 100.",
+      "businessRules": ["A ordenação é sempre pela data de criação, da mais recente para a mais antiga."],
+      "errorScenarios": [{"status": 400, "when": "page negativo ou size fora do intervalo de 1 a 100."}],
+      "requestExample": "",
+      "responseExample": "{\"content\": [], \"page\": 0, \"size\": 20, \"totalElements\": 0, \"totalPages\": 0}"
+    },
+    {
+      "endpointId": "OrderController#create",
+      "title": "Criar pedido",
+      "summary": "Cria um pedido para um cliente existente.",
+      "description": "Reserva o estoque de cada item, calcula subtotal, desconto e total e grava o pedido com status CREATED.",
+      "businessRules": [
+        "O cliente e todos os produtos precisam existir.",
+        "Cada item precisa de estoque suficiente; o estoque é baixado na criação do pedido.",
+        "Pedidos com subtotal acima de 500,00 recebem 10% de desconto.",
+        "Cada item aceita de 1 a 10 unidades e o pedido aceita até 50 itens."
+      ],
+      "errorScenarios": [
+        {"status": 400, "when": "Corpo inválido: cliente ausente, lista de itens vazia ou quantidade fora de 1 a 10."},
+        {"status": 404, "when": "O cliente ou algum produto não existe."},
+        {"status": 409, "when": "Algum produto não tem estoque suficiente."}
+      ],
+      "requestExample": "{\"customerId\": 1, \"items\": [{\"productId\": 10, \"quantity\": 2}]}",
+      "responseExample": "{\"id\": 100, \"customerId\": 1, \"status\": \"CREATED\", \"items\": [{\"productId\": 10, \"sku\": \"CAM-001\", \"quantity\": 2, \"unitPrice\": 300.5, \"lineTotal\": 601.0}], \"subtotal\": 601.0, \"discount\": 60.1, \"total\": 540.9, \"createdAt\": \"2026-09-29T12:00:00Z\"}"
+    },
+    {
+      "endpointId": "OrderController#listByCustomer",
+      "title": "Listar pedidos do cliente",
+      "summary": "Lista todos os pedidos de um cliente.",
+      "description": "Endpoint obsoleto: devolve todos os pedidos do cliente sem paginação; prefira a listagem paginada.",
+      "businessRules": [],
+      "errorScenarios": [],
+      "requestExample": "",
+      "responseExample": ""
+    },
+    {
+      "endpointId": "OrderController#get",
+      "title": "Consultar pedido",
+      "summary": "Retorna um pedido com seus itens e valores.",
+      "description": "Busca o pedido pelo identificador.",
+      "businessRules": [],
+      "errorScenarios": [{"status": 404, "when": "O pedido não existe."}],
+      "requestExample": "",
+      "responseExample": ""
+    },
+    {
+      "endpointId": "OrderController#delete",
+      "title": "Excluir pedido",
+      "summary": "Exclui um pedido cancelado.",
+      "description": "Remove definitivamente um pedido. Apenas administradores podem excluir.",
+      "businessRules": ["Somente pedidos com status CANCELLED podem ser excluídos."],
+      "errorScenarios": [
+        {"status": 404, "when": "O pedido não existe."},
+        {"status": 422, "when": "O pedido não está cancelado."}
+      ],
+      "requestExample": "",
+      "responseExample": ""
+    },
+    {
+      "endpointId": "OrderController#cancel",
+      "title": "Cancelar pedido",
+      "summary": "Cancela um pedido e devolve os itens ao estoque.",
+      "description": "Cancelar um pedido já cancelado não tem efeito e devolve o pedido como está.",
+      "businessRules": [
+        "Pedidos SHIPPED ou DELIVERED não podem ser cancelados.",
+        "O estoque de cada item é devolvido no cancelamento."
+      ],
+      "errorScenarios": [
+        {"status": 404, "when": "O pedido não existe."},
+        {"status": 422, "when": "O pedido já foi enviado ou entregue."}
+      ],
+      "requestExample": "",
+      "responseExample": ""
+    },
+    {
+      "endpointId": "OrderController#updateStatus",
+      "title": "Avançar status do pedido",
+      "summary": "Move o pedido para o próximo status.",
+      "description": "Apenas administradores alteram o status, sempre na ordem CREATED, PAID, SHIPPED, DELIVERED.",
+      "businessRules": ["Transições válidas: CREATED para PAID, PAID para SHIPPED e SHIPPED para DELIVERED."],
+      "errorScenarios": [
+        {"status": 400, "when": "Status ausente no corpo."},
+        {"status": 404, "when": "O pedido não existe."},
+        {"status": 422, "when": "A transição pedida não é permitida."}
+      ],
+      "requestExample": "{\"status\": \"PAID\"}",
+      "responseExample": ""
+    },
+    {
+      "endpointId": "OrderController#archive",
+      "title": "Arquivar pedido",
+      "summary": "Endpoint que não existe no código.",
+      "description": "Deve ser descartado pelo gerador.",
+      "businessRules": [],
+      "errorScenarios": [],
+      "requestExample": "",
+      "responseExample": ""
+    }
+  ]
+}

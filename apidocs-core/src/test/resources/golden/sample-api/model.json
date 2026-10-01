@@ -1,0 +1,2196 @@
+{
+  "project": {
+    "name": "Shop API",
+    "description": "Sample e-commerce orders API used as the demo target of apidocs.",
+    "version": "1.0.0",
+    "javaVersion": "21",
+    "springBootVersion": "4.1.1",
+    "dependencies": [
+      "h2",
+      "spring-boot-starter-data-jpa",
+      "spring-boot-starter-security",
+      "spring-boot-starter-validation",
+      "spring-boot-starter-webmvc"
+    ],
+    "applicationName": "shop-api",
+    "contextPath": "/shop",
+    "buildTool": "maven"
+  },
+  "controllers": [
+    {
+      "name": "CustomerController",
+      "qualifiedName": "com.example.shop.customer.CustomerController",
+      "basePath": "/shop/api/customers",
+      "description": "Customer registration and lookup.",
+      "dependencies": [
+        "CustomerService"
+      ],
+      "endpoints": [
+        {
+          "id": "CustomerController#create",
+          "method": "POST",
+          "path": "/shop/api/customers",
+          "javaMethod": "create",
+          "parameters": [ ],
+          "requestBody": {
+            "type": {
+              "type": "object",
+              "schemaName": "CreateCustomerRequest"
+            },
+            "validated": true
+          },
+          "response": {
+            "status": 201,
+            "body": {
+              "type": "object",
+              "schemaName": "CustomerResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "exception": "MethodArgumentNotValidException"
+            },
+            {
+              "status": 409,
+              "exception": "DuplicateResourceException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "CustomerService",
+              "methodName": "create"
+            }
+          ]
+        },
+        {
+          "id": "CustomerController#get",
+          "method": "GET",
+          "path": "/shop/api/customers/{id}",
+          "javaMethod": "get",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "Customer"
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "Returns the customer record.",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "CustomerService",
+              "methodName": "getEntity"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "OrderController",
+      "qualifiedName": "com.example.shop.order.OrderController",
+      "basePath": "/shop/api/orders",
+      "description": "Order placement and lifecycle management.",
+      "dependencies": [
+        "OrderService"
+      ],
+      "endpoints": [
+        {
+          "id": "OrderController#list",
+          "method": "GET",
+          "path": "/shop/api/orders",
+          "javaMethod": "list",
+          "parameters": [
+            {
+              "name": "status",
+              "in": "QUERY",
+              "type": {
+                "type": "enum",
+                "schemaName": "OrderStatus"
+              },
+              "required": false,
+              "defaultValue": "",
+              "constraints": [ ]
+            },
+            {
+              "name": "page",
+              "in": "QUERY",
+              "type": {
+                "type": "scalar",
+                "kind": "INTEGER"
+              },
+              "required": false,
+              "defaultValue": "0",
+              "constraints": [
+                {
+                  "name": "Min",
+                  "attributes": {
+                    "value": "0"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "size",
+              "in": "QUERY",
+              "type": {
+                "type": "scalar",
+                "kind": "INTEGER"
+              },
+              "required": false,
+              "defaultValue": "20",
+              "constraints": [
+                {
+                  "name": "Min",
+                  "attributes": {
+                    "value": "1"
+                  }
+                },
+                {
+                  "name": "Max",
+                  "attributes": {
+                    "value": "100"
+                  }
+                }
+              ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "PageResponse_OrderResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "exception": "HandlerMethodValidationException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "Lists orders, newest first, optionally filtered by status.",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "OrderService",
+              "methodName": "list"
+            }
+          ]
+        },
+        {
+          "id": "OrderController#create",
+          "method": "POST",
+          "path": "/shop/api/orders",
+          "javaMethod": "create",
+          "parameters": [ ],
+          "requestBody": {
+            "type": {
+              "type": "object",
+              "schemaName": "CreateOrderRequest"
+            },
+            "validated": true
+          },
+          "response": {
+            "status": 201,
+            "body": {
+              "type": "object",
+              "schemaName": "OrderResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "exception": "MethodArgumentNotValidException"
+            },
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            },
+            {
+              "status": 409,
+              "exception": "InsufficientStockException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "OrderService",
+              "methodName": "create"
+            }
+          ]
+        },
+        {
+          "id": "OrderController#listByCustomer",
+          "method": "GET",
+          "path": "/shop/api/orders/customer/{customerId}",
+          "javaMethod": "listByCustomer",
+          "parameters": [
+            {
+              "name": "customerId",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "schemaName": "OrderResponse"
+              }
+            }
+          },
+          "errors": [ ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": true,
+          "summary": "",
+          "description": "Lists every order of a customer. Deprecated: use the paginated listing instead.",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "OrderService",
+              "methodName": "listByCustomer"
+            }
+          ]
+        },
+        {
+          "id": "OrderController#get",
+          "method": "GET",
+          "path": "/shop/api/orders/{id}",
+          "javaMethod": "get",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "OrderResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "OrderService",
+              "methodName": "findById"
+            }
+          ]
+        },
+        {
+          "id": "OrderController#delete",
+          "method": "DELETE",
+          "path": "/shop/api/orders/{id}",
+          "javaMethod": "delete",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 204,
+            "body": null
+          },
+          "errors": [
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            },
+            {
+              "status": 422,
+              "exception": "InvalidOrderStateException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "hasRole('ADMIN')",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "OrderService",
+              "methodName": "delete"
+            }
+          ]
+        },
+        {
+          "id": "OrderController#cancel",
+          "method": "POST",
+          "path": "/shop/api/orders/{id}/cancel",
+          "javaMethod": "cancel",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "OrderResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            },
+            {
+              "status": 422,
+              "exception": "InvalidOrderStateException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "OrderService",
+              "methodName": "cancel"
+            }
+          ]
+        },
+        {
+          "id": "OrderController#updateStatus",
+          "method": "PATCH",
+          "path": "/shop/api/orders/{id}/status",
+          "javaMethod": "updateStatus",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": {
+            "type": {
+              "type": "object",
+              "schemaName": "UpdateOrderStatusRequest"
+            },
+            "validated": true
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "OrderResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "exception": "MethodArgumentNotValidException"
+            },
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            },
+            {
+              "status": 422,
+              "exception": "InvalidOrderStateException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "hasRole('ADMIN')",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "OrderService",
+              "methodName": "updateStatus"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ProductController",
+      "qualifiedName": "com.example.shop.product.ProductController",
+      "basePath": "/shop/api/products",
+      "description": "Product catalog and stock management.",
+      "dependencies": [
+        "ProductService"
+      ],
+      "endpoints": [
+        {
+          "id": "ProductController#list",
+          "method": "GET",
+          "path": "/shop/api/products",
+          "javaMethod": "list",
+          "parameters": [
+            {
+              "name": "page",
+              "in": "QUERY",
+              "type": {
+                "type": "scalar",
+                "kind": "INTEGER"
+              },
+              "required": false,
+              "defaultValue": "0",
+              "constraints": [ ]
+            },
+            {
+              "name": "size",
+              "in": "QUERY",
+              "type": {
+                "type": "scalar",
+                "kind": "INTEGER"
+              },
+              "required": false,
+              "defaultValue": "20",
+              "constraints": [ ]
+            },
+            {
+              "name": "sort",
+              "in": "QUERY",
+              "type": {
+                "type": "array",
+                "items": {
+                  "type": "scalar",
+                  "kind": "STRING"
+                }
+              },
+              "required": false,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "PagedModel_ProductResponse"
+            }
+          },
+          "errors": [ ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "Lists products page by page.",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "ProductService",
+              "methodName": "list"
+            }
+          ]
+        },
+        {
+          "id": "ProductController#create",
+          "method": "POST",
+          "path": "/shop/api/products",
+          "javaMethod": "create",
+          "parameters": [ ],
+          "requestBody": {
+            "type": {
+              "type": "object",
+              "schemaName": "CreateProductRequest"
+            },
+            "validated": true
+          },
+          "response": {
+            "status": 201,
+            "body": {
+              "type": "object",
+              "schemaName": "ProductResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "exception": "MethodArgumentNotValidException"
+            },
+            {
+              "status": 409,
+              "exception": "DuplicateResourceException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "hasRole('ADMIN')",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "ProductService",
+              "methodName": "create"
+            }
+          ]
+        },
+        {
+          "id": "ProductController#get",
+          "method": "GET",
+          "path": "/shop/api/products/{id}",
+          "javaMethod": "get",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": null,
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "ProductResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "ProductService",
+              "methodName": "findById"
+            }
+          ]
+        },
+        {
+          "id": "ProductController#adjustStock",
+          "method": "PATCH",
+          "path": "/shop/api/products/{id}/stock",
+          "javaMethod": "adjustStock",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "PATH",
+              "type": {
+                "type": "scalar",
+                "kind": "LONG"
+              },
+              "required": true,
+              "defaultValue": "",
+              "constraints": [ ]
+            }
+          ],
+          "requestBody": {
+            "type": {
+              "type": "object",
+              "schemaName": "StockAdjustmentRequest"
+            },
+            "validated": true
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "schemaName": "ProductResponse"
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "exception": "MethodArgumentNotValidException"
+            },
+            {
+              "status": 404,
+              "exception": "NotFoundException"
+            },
+            {
+              "status": 409,
+              "exception": "InsufficientStockException"
+            }
+          ],
+          "thrownExceptions": [ ],
+          "security": "hasRole('ADMIN')",
+          "deprecated": false,
+          "summary": "",
+          "description": "",
+          "consumes": [ ],
+          "produces": [ ],
+          "serviceCalls": [
+            {
+              "typeName": "ProductService",
+              "methodName": "adjustStock"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "schemas": [
+    {
+      "name": "CreateCustomerRequest",
+      "qualifiedName": "com.example.shop.customer.dto.CreateCustomerRequest",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "name",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotBlank",
+              "attributes": { }
+            },
+            {
+              "name": "Size",
+              "attributes": {
+                "max": "120"
+              }
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "email",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotBlank",
+              "attributes": { }
+            },
+            {
+              "name": "Email",
+              "attributes": { }
+            }
+          ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "CreateOrderRequest",
+      "qualifiedName": "com.example.shop.order.dto.CreateOrderRequest",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "customerId",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotNull",
+              "attributes": { }
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "items",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "schemaName": "OrderItemRequest"
+            }
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotEmpty",
+              "attributes": { }
+            },
+            {
+              "name": "Size",
+              "attributes": {
+                "max": "50"
+              }
+            }
+          ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "Items to buy for an existing customer.",
+      "entity": false
+    },
+    {
+      "name": "CreateProductRequest",
+      "qualifiedName": "com.example.shop.product.dto.CreateProductRequest",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "sku",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotBlank",
+              "attributes": { }
+            },
+            {
+              "name": "Size",
+              "attributes": {
+                "max": "32"
+              }
+            },
+            {
+              "name": "Pattern",
+              "attributes": {
+                "regexp": "^[A-Z0-9-]+$"
+              }
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotBlank",
+              "attributes": { }
+            },
+            {
+              "name": "Size",
+              "attributes": {
+                "max": "120"
+              }
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "price",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotNull",
+              "attributes": { }
+            },
+            {
+              "name": "DecimalMin",
+              "attributes": {
+                "value": "0.01"
+              }
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "stock",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "PositiveOrZero",
+              "attributes": { }
+            }
+          ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "Data required to register a new product in the catalog.",
+      "entity": false
+    },
+    {
+      "name": "Customer",
+      "qualifiedName": "com.example.shop.customer.Customer",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "email",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": true
+    },
+    {
+      "name": "CustomerResponse",
+      "qualifiedName": "com.example.shop.customer.dto.CustomerResponse",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "email",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "OrderItemRequest",
+      "qualifiedName": "com.example.shop.order.dto.OrderItemRequest",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "productId",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotNull",
+              "attributes": { }
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "Min",
+              "attributes": {
+                "value": "1"
+              }
+            },
+            {
+              "name": "Max",
+              "attributes": {
+                "value": "10"
+              }
+            }
+          ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "OrderItemResponse",
+      "qualifiedName": "com.example.shop.order.dto.OrderItemResponse",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "productId",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "sku",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "unitPrice",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "lineTotal",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "OrderResponse",
+      "qualifiedName": "com.example.shop.order.dto.OrderResponse",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "customerId",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "enum",
+            "schemaName": "OrderStatus"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "items",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "schemaName": "OrderItemResponse"
+            }
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "subtotal",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "discount",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "total",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "OrderStatus",
+      "qualifiedName": "com.example.shop.order.OrderStatus",
+      "kind": "ENUM",
+      "fields": [ ],
+      "enumValues": [
+        "CREATED",
+        "PAID",
+        "SHIPPED",
+        "DELIVERED",
+        "CANCELLED"
+      ],
+      "description": "Lifecycle of an order.",
+      "entity": false
+    },
+    {
+      "name": "PageMetadata",
+      "qualifiedName": "org.springframework.data.web.PagedModel.PageMetadata",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "size",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "number",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "totalElements",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "totalPages",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "PageResponse_OrderResponse",
+      "qualifiedName": "com.example.shop.common.PageResponse",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "content",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "schemaName": "OrderResponse"
+            }
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "page",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "size",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "totalElements",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "totalPages",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "Page of results returned by list endpoints.",
+      "entity": false
+    },
+    {
+      "name": "PagedModel_ProductResponse",
+      "qualifiedName": "org.springframework.data.web.PagedModel",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "content",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "schemaName": "ProductResponse"
+            }
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "page",
+          "type": {
+            "type": "object",
+            "schemaName": "PageMetadata"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "ProductResponse",
+      "qualifiedName": "com.example.shop.product.dto.ProductResponse",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "sku",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "price",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "required": false,
+          "constraints": [ ],
+          "description": ""
+        },
+        {
+          "name": "stock",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [ ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    },
+    {
+      "name": "StockAdjustmentRequest",
+      "qualifiedName": "com.example.shop.product.dto.StockAdjustmentRequest",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "delta",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotNull",
+              "attributes": { }
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "reason",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "required": false,
+          "constraints": [
+            {
+              "name": "Size",
+              "attributes": {
+                "max": "200"
+              }
+            }
+          ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "Relative stock change; negative values remove units.",
+      "entity": false
+    },
+    {
+      "name": "UpdateOrderStatusRequest",
+      "qualifiedName": "com.example.shop.order.dto.UpdateOrderStatusRequest",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "status",
+          "type": {
+            "type": "enum",
+            "schemaName": "OrderStatus"
+          },
+          "required": true,
+          "constraints": [
+            {
+              "name": "NotNull",
+              "attributes": { }
+            }
+          ],
+          "description": ""
+        }
+      ],
+      "enumValues": [ ],
+      "description": "",
+      "entity": false
+    }
+  ],
+  "entities": [
+    {
+      "name": "Customer",
+      "qualifiedName": "com.example.shop.customer.Customer",
+      "table": "customers",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "column": "id",
+          "id": true,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "createdAt",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "updatedAt",
+          "id": false,
+          "nullable": true,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "column": "name",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 120
+        },
+        {
+          "name": "email",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "column": "email",
+          "id": false,
+          "nullable": false,
+          "unique": true,
+          "length": 0
+        }
+      ],
+      "relationships": [
+        {
+          "field": "orders",
+          "kind": "ONE_TO_MANY",
+          "target": "Order",
+          "mappedBy": "customer"
+        }
+      ]
+    },
+    {
+      "name": "Order",
+      "qualifiedName": "com.example.shop.order.Order",
+      "table": "orders",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "column": "id",
+          "id": true,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "createdAt",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "updatedAt",
+          "id": false,
+          "nullable": true,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "status",
+          "type": {
+            "type": "enum",
+            "schemaName": "OrderStatus"
+          },
+          "column": "status",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 20
+        },
+        {
+          "name": "subtotal",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "column": "subtotal",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "discount",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "column": "discount",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "total",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "column": "total",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        }
+      ],
+      "relationships": [
+        {
+          "field": "customer",
+          "kind": "MANY_TO_ONE",
+          "target": "Customer",
+          "mappedBy": ""
+        },
+        {
+          "field": "items",
+          "kind": "ONE_TO_MANY",
+          "target": "OrderItem",
+          "mappedBy": "order"
+        }
+      ]
+    },
+    {
+      "name": "OrderItem",
+      "qualifiedName": "com.example.shop.order.OrderItem",
+      "table": "order_items",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "column": "id",
+          "id": true,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "createdAt",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "updatedAt",
+          "id": false,
+          "nullable": true,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "column": "quantity",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "unitPrice",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "column": "unitPrice",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        }
+      ],
+      "relationships": [
+        {
+          "field": "order",
+          "kind": "MANY_TO_ONE",
+          "target": "Order",
+          "mappedBy": ""
+        },
+        {
+          "field": "product",
+          "kind": "MANY_TO_ONE",
+          "target": "Product",
+          "mappedBy": ""
+        }
+      ]
+    },
+    {
+      "name": "Product",
+      "qualifiedName": "com.example.shop.product.Product",
+      "table": "products",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "scalar",
+            "kind": "LONG"
+          },
+          "column": "id",
+          "id": true,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "createdAt",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "type": "scalar",
+            "kind": "DATE_TIME"
+          },
+          "column": "updatedAt",
+          "id": false,
+          "nullable": true,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "sku",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "column": "sku",
+          "id": false,
+          "nullable": false,
+          "unique": true,
+          "length": 32
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "scalar",
+            "kind": "STRING"
+          },
+          "column": "name",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 120
+        },
+        {
+          "name": "price",
+          "type": {
+            "type": "scalar",
+            "kind": "DECIMAL"
+          },
+          "column": "price",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        },
+        {
+          "name": "stock",
+          "type": {
+            "type": "scalar",
+            "kind": "INTEGER"
+          },
+          "column": "stock",
+          "id": false,
+          "nullable": false,
+          "unique": false,
+          "length": 0
+        }
+      ],
+      "relationships": [ ]
+    }
+  ],
+  "services": [
+    {
+      "name": "CustomerService",
+      "qualifiedName": "com.example.shop.customer.CustomerService",
+      "dependencies": [
+        "CustomerRepository"
+      ],
+      "methods": [
+        {
+          "name": "create",
+          "signature": "CustomerResponse create(CreateCustomerRequest request)",
+          "body": "{\n        if (customerRepository.existsByEmail(request.email())) {\n            throw new DuplicateResourceException(\"Customer\", \"email\", request.email());\n        }\n        Customer customer = customerRepository.save(new Customer(request.name(), request.email()));\n        return CustomerResponse.from(customer);\n    }",
+          "transactional": true,
+          "readOnly": false,
+          "thrownExceptions": [
+            "DuplicateResourceException"
+          ],
+          "calls": [
+            {
+              "typeName": "CustomerRepository",
+              "methodName": "existsByEmail"
+            },
+            {
+              "typeName": "CustomerRepository",
+              "methodName": "save"
+            }
+          ],
+          "description": "Registers a customer; e-mail addresses are unique."
+        },
+        {
+          "name": "getEntity",
+          "signature": "Customer getEntity(Long id)",
+          "body": "{\n        return customerRepository.findById(id).orElseThrow(() -> new NotFoundException(\"Customer\", id));\n    }",
+          "transactional": true,
+          "readOnly": true,
+          "thrownExceptions": [
+            "NotFoundException"
+          ],
+          "calls": [
+            {
+              "typeName": "CustomerRepository",
+              "methodName": "findById"
+            }
+          ],
+          "description": ""
+        }
+      ]
+    },
+    {
+      "name": "OrderService",
+      "qualifiedName": "com.example.shop.order.OrderService",
+      "dependencies": [
+        "CustomerService",
+        "OrderRepository",
+        "ProductRepository"
+      ],
+      "methods": [
+        {
+          "name": "create",
+          "signature": "OrderResponse create(CreateOrderRequest request)",
+          "body": "{\n        Customer customer = customerService.getEntity(request.customerId());\n        Order order = new Order(customer);\n        for (OrderItemRequest itemRequest : request.items()) {\n            Product product = productRepository.findById(itemRequest.productId())\n                    .orElseThrow(() -> new NotFoundException(\"Product\", itemRequest.productId()));\n            if (product.getStock() < itemRequest.quantity()) {\n                throw new InsufficientStockException(product.getSku(), itemRequest.quantity(), product.getStock());\n            }\n            product.setStock(product.getStock() - itemRequest.quantity());\n            order.addItem(new OrderItem(product, itemRequest.quantity(), product.getPrice()));\n        }\n        BigDecimal subtotal = order.getItems().stream()\n                .map(OrderItem::getLineTotal)\n                .reduce(BigDecimal.ZERO, BigDecimal::add);\n        BigDecimal discount = subtotal.compareTo(DISCOUNT_THRESHOLD) > 0\n                ? subtotal.multiply(DISCOUNT_RATE).setScale(2, RoundingMode.HALF_UP)\n                : BigDecimal.ZERO;\n        order.setSubtotal(subtotal);\n        order.setDiscount(discount);\n        order.setTotal(subtotal.subtract(discount));\n        return OrderResponse.from(orderRepository.save(order));\n    }",
+          "transactional": true,
+          "readOnly": false,
+          "thrownExceptions": [
+            "NotFoundException",
+            "InsufficientStockException"
+          ],
+          "calls": [
+            {
+              "typeName": "CustomerService",
+              "methodName": "getEntity"
+            },
+            {
+              "typeName": "ProductRepository",
+              "methodName": "findById"
+            },
+            {
+              "typeName": "OrderRepository",
+              "methodName": "save"
+            }
+          ],
+          "description": "Creates an order for an existing customer, reserving stock for every item. Orders above 500.00 receive a 10% discount."
+        },
+        {
+          "name": "findById",
+          "signature": "OrderResponse findById(Long id)",
+          "body": "{\n        return OrderResponse.from(getOrder(id));\n    }",
+          "transactional": true,
+          "readOnly": true,
+          "thrownExceptions": [
+            "NotFoundException"
+          ],
+          "calls": [
+            {
+              "typeName": "OrderRepository",
+              "methodName": "findById"
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "list",
+          "signature": "PageResponse<OrderResponse> list(OrderStatus status, int page, int size)",
+          "body": "{\n        Pageable pageable = PageRequest.of(page, size, Sort.by(\"createdAt\").descending());\n        Page<Order> orders = status == null\n                ? orderRepository.findAll(pageable)\n                : orderRepository.findByStatus(status, pageable);\n        return PageResponse.from(orders.map(OrderResponse::from));\n    }",
+          "transactional": true,
+          "readOnly": true,
+          "thrownExceptions": [ ],
+          "calls": [
+            {
+              "typeName": "OrderRepository",
+              "methodName": "findAll"
+            },
+            {
+              "typeName": "OrderRepository",
+              "methodName": "findByStatus"
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "listByCustomer",
+          "signature": "List<OrderResponse> listByCustomer(Long customerId)",
+          "body": "{\n        return orderRepository.findByCustomerId(customerId).stream().map(OrderResponse::from).toList();\n    }",
+          "transactional": true,
+          "readOnly": true,
+          "thrownExceptions": [ ],
+          "calls": [
+            {
+              "typeName": "OrderRepository",
+              "methodName": "findByCustomerId"
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "cancel",
+          "signature": "OrderResponse cancel(Long id)",
+          "body": "{\n        Order order = getOrder(id);\n        if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED) {\n            throw new InvalidOrderStateException(id, order.getStatus(), \"be cancelled\");\n        }\n        if (order.getStatus() != OrderStatus.CANCELLED) {\n            order.getItems().forEach(item -> item.getProduct().setStock(item.getProduct().getStock() + item.getQuantity()));\n            order.setStatus(OrderStatus.CANCELLED);\n        }\n        return OrderResponse.from(order);\n    }",
+          "transactional": true,
+          "readOnly": false,
+          "thrownExceptions": [
+            "InvalidOrderStateException",
+            "NotFoundException"
+          ],
+          "calls": [
+            {
+              "typeName": "OrderRepository",
+              "methodName": "findById"
+            }
+          ],
+          "description": "Cancels an order and returns its items to stock. Shipped or delivered orders cannot be cancelled."
+        },
+        {
+          "name": "updateStatus",
+          "signature": "OrderResponse updateStatus(Long id, OrderStatus next)",
+          "body": "{\n        Order order = getOrder(id);\n        boolean allowed = switch (order.getStatus()) {\n            case CREATED -> next == OrderStatus.PAID;\n            case PAID -> next == OrderStatus.SHIPPED;\n            case SHIPPED -> next == OrderStatus.DELIVERED;\n            case DELIVERED, CANCELLED -> false;\n        };\n        if (!allowed) {\n            throw new InvalidOrderStateException(id, order.getStatus(), \"move to \" + next);\n        }\n        order.setStatus(next);\n        return OrderResponse.from(order);\n    }",
+          "transactional": true,
+          "readOnly": false,
+          "thrownExceptions": [
+            "InvalidOrderStateException",
+            "NotFoundException"
+          ],
+          "calls": [
+            {
+              "typeName": "OrderRepository",
+              "methodName": "findById"
+            }
+          ],
+          "description": "Moves an order forward: CREATED to PAID to SHIPPED to DELIVERED."
+        },
+        {
+          "name": "delete",
+          "signature": "void delete(Long id)",
+          "body": "{\n        Order order = getOrder(id);\n        if (order.getStatus() != OrderStatus.CANCELLED) {\n            throw new InvalidOrderStateException(id, order.getStatus(), \"be deleted\");\n        }\n        orderRepository.delete(order);\n    }",
+          "transactional": true,
+          "readOnly": false,
+          "thrownExceptions": [
+            "InvalidOrderStateException",
+            "NotFoundException"
+          ],
+          "calls": [
+            {
+              "typeName": "OrderRepository",
+              "methodName": "delete"
+            },
+            {
+              "typeName": "OrderRepository",
+              "methodName": "findById"
+            }
+          ],
+          "description": "Deletes an order; only cancelled orders can be deleted."
+        }
+      ]
+    },
+    {
+      "name": "ProductService",
+      "qualifiedName": "com.example.shop.product.ProductService",
+      "dependencies": [
+        "ProductRepository"
+      ],
+      "methods": [
+        {
+          "name": "create",
+          "signature": "ProductResponse create(CreateProductRequest request)",
+          "body": "{\n        if (productRepository.existsBySku(request.sku())) {\n            throw new DuplicateResourceException(\"Product\", \"sku\", request.sku());\n        }\n        Product product = new Product(request.sku(), request.name(), request.price(), request.stock());\n        return ProductResponse.from(productRepository.save(product));\n    }",
+          "transactional": true,
+          "readOnly": false,
+          "thrownExceptions": [
+            "DuplicateResourceException"
+          ],
+          "calls": [
+            {
+              "typeName": "ProductRepository",
+              "methodName": "existsBySku"
+            },
+            {
+              "typeName": "ProductRepository",
+              "methodName": "save"
+            }
+          ],
+          "description": "Registers a product; SKUs are unique across the catalog."
+        },
+        {
+          "name": "findById",
+          "signature": "ProductResponse findById(Long id)",
+          "body": "{\n        return ProductResponse.from(getProduct(id));\n    }",
+          "transactional": true,
+          "readOnly": true,
+          "thrownExceptions": [
+            "NotFoundException"
+          ],
+          "calls": [
+            {
+              "typeName": "ProductRepository",
+              "methodName": "findById"
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "list",
+          "signature": "Page<ProductResponse> list(Pageable pageable)",
+          "body": "{\n        return productRepository.findAll(pageable).map(ProductResponse::from);\n    }",
+          "transactional": true,
+          "readOnly": true,
+          "thrownExceptions": [ ],
+          "calls": [
+            {
+              "typeName": "ProductRepository",
+              "methodName": "findAll"
+            }
+          ],
+          "description": ""
+        },
+        {
+          "name": "adjustStock",
+          "signature": "ProductResponse adjustStock(Long id, StockAdjustmentRequest request)",
+          "body": "{\n        Product product = getProduct(id);\n        int newStock = product.getStock() + request.delta();\n        if (newStock < 0) {\n            throw new InsufficientStockException(product.getSku(), -request.delta(), product.getStock());\n        }\n        product.setStock(newStock);\n        return ProductResponse.from(product);\n    }",
+          "transactional": true,
+          "readOnly": false,
+          "thrownExceptions": [
+            "InsufficientStockException",
+            "NotFoundException"
+          ],
+          "calls": [
+            {
+              "typeName": "ProductRepository",
+              "methodName": "findById"
+            }
+          ],
+          "description": "Applies a relative stock change; stock can never become negative."
+        }
+      ]
+    }
+  ],
+  "repositories": [
+    {
+      "name": "CustomerRepository",
+      "qualifiedName": "com.example.shop.customer.CustomerRepository",
+      "entity": "Customer",
+      "idType": "Long"
+    },
+    {
+      "name": "OrderRepository",
+      "qualifiedName": "com.example.shop.order.OrderRepository",
+      "entity": "Order",
+      "idType": "Long"
+    },
+    {
+      "name": "ProductRepository",
+      "qualifiedName": "com.example.shop.product.ProductRepository",
+      "entity": "Product",
+      "idType": "Long"
+    }
+  ],
+  "exceptionMappings": [
+    {
+      "exception": "BusinessException",
+      "status": 409
+    },
+    {
+      "exception": "InvalidOrderStateException",
+      "status": 422
+    },
+    {
+      "exception": "MethodArgumentNotValidException",
+      "status": 400
+    },
+    {
+      "exception": "NotFoundException",
+      "status": 404
+    }
+  ],
+  "warnings": [ ]
+}

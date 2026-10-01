@@ -2,6 +2,7 @@ package dev.apidocs.core.ai.narrative;
 
 import dev.apidocs.core.ai.Describe;
 import java.util.List;
+import java.util.Optional;
 
 public record EndpointNarrative(
         @Describe("Exactly one of the endpoint ids listed in the input.") String endpointId,
@@ -15,5 +16,14 @@ public record EndpointNarrative(
 
     public EndpointNarrative withExamples(String request, String response) {
         return new EndpointNarrative(endpointId, title, summary, description, businessRules, errorScenarios, request, response);
+    }
+
+    /** When the endpoint answers with {@code status}: the first scenario for it that has a non-blank text. */
+    public Optional<String> whenFor(int status) {
+        return errorScenarios.stream()
+                .filter(scenario -> scenario.status() == status)
+                .map(ErrorScenario::when)
+                .filter(text -> !text.isBlank())
+                .findFirst();
     }
 }

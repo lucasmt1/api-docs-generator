@@ -1,0 +1,55 @@
+{
+  "controllerSummary": "Catálogo de produtos e ajustes de estoque.",
+  "endpoints": [
+    {
+      "endpointId": "ProductController#list",
+      "title": "Listar produtos",
+      "summary": "Lista os produtos do catálogo com paginação.",
+      "description": "Aceita os parâmetros padrão de paginação do Spring Data (page, size e sort).",
+      "businessRules": [],
+      "errorScenarios": [],
+      "requestExample": "",
+      "responseExample": "{\"content\": [{\"id\": 10, \"sku\": \"CAM-001\", \"name\": \"Camiseta\", \"price\": 300.5, \"stock\": 25}], \"page\": {\"size\": 20, \"number\": 0, \"totalElements\": 1, \"totalPages\": 1}}"
+    },
+    {
+      "endpointId": "ProductController#create",
+      "title": "Cadastrar produto",
+      "summary": "Cadastra um produto no catálogo.",
+      "description": "Apenas administradores cadastram produtos.",
+      "businessRules": [
+        "O SKU é único no catálogo e aceita apenas letras maiúsculas, números e hífen.",
+        "O preço mínimo é 0,01 e o estoque inicial não pode ser negativo."
+      ],
+      "errorScenarios": [
+        {"status": 400, "when": "SKU, nome ou preço inválidos."},
+        {"status": 409, "when": "Já existe um produto com o SKU informado."}
+      ],
+      "requestExample": "{\"sku\": \"CAM-001\", \"name\": \"Camiseta\", \"price\": 300.5, \"stock\": 25}",
+      "responseExample": "{\"id\": 10, \"sku\": \"CAM-001\", \"name\": \"Camiseta\", \"price\": 300.5, \"stock\": 25}"
+    },
+    {
+      "endpointId": "ProductController#get",
+      "title": "Consultar produto",
+      "summary": "Retorna um produto pelo identificador.",
+      "description": "Inclui preço e estoque atuais.",
+      "businessRules": [],
+      "errorScenarios": [{"status": 404, "when": "O produto não existe."}],
+      "requestExample": "",
+      "responseExample": ""
+    },
+    {
+      "endpointId": "ProductController#adjustStock",
+      "title": "Ajustar estoque",
+      "summary": "Soma ou subtrai unidades do estoque de um produto.",
+      "description": "Valores negativos removem unidades. Apenas administradores ajustam estoque.",
+      "businessRules": ["O estoque nunca pode ficar negativo."],
+      "errorScenarios": [
+        {"status": 400, "when": "delta ausente ou motivo com mais de 200 caracteres."},
+        {"status": 404, "when": "O produto não existe."},
+        {"status": 409, "when": "O ajuste deixaria o estoque negativo."}
+      ],
+      "requestExample": "{\"delta\": -5, \"reason\": \"Avaria no transporte\"}",
+      "responseExample": ""
+    }
+  ]
+}

@@ -1,0 +1,623 @@
+openapi: 3.1.0
+info:
+  title: Shop API
+  version: 1.0.0
+  description: |-
+    A Shop API gerencia o catálogo de produtos, o cadastro de clientes e o ciclo de vida dos pedidos de uma loja virtual.
+
+    Aplicações front-end usam a API para criar pedidos com reserva automática de estoque, acompanhar o status e consultar produtos. Administradores ajustam estoque e avançam pedidos pelas etapas de pagamento, envio e entrega.
+tags:
+- name: CustomerController
+  description: Cadastro e consulta de clientes da loja.
+- name: OrderController
+  description: "Criação de pedidos e controle do ciclo de vida: pagamento, envio,\
+    \ entrega e cancelamento."
+- name: ProductController
+  description: Catálogo de produtos e ajustes de estoque.
+paths:
+  /shop/api/customers:
+    post:
+      tags:
+      - CustomerController
+      operationId: CustomerController_create
+      summary: Cadastrar cliente
+      description: Valida nome e e-mail e grava o cliente. Responde 201 com o cliente
+        criado e o cabeçalho Location.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "400":
+          description: Nome ou e-mail ausentes ou com formato inválido.
+        "409":
+          description: Já existe um cliente com o e-mail informado.
+  /shop/api/customers/{id}:
+    get:
+      tags:
+      - CustomerController
+      operationId: CustomerController_get
+      summary: Consultar cliente
+      description: Busca o cliente pelo identificador e devolve o registro completo
+        da entidade.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          description: Nenhum cliente possui o id informado.
+  /shop/api/orders:
+    get:
+      tags:
+      - OrderController
+      operationId: OrderController_list
+      summary: Listar pedidos
+      description: Permite filtrar por status. A página começa em 0 e o tamanho vai
+        de 1 a 100.
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: "#/components/schemas/OrderStatus"
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponse_OrderResponse"
+        "400":
+          description: page negativo ou size fora do intervalo de 1 a 100.
+    post:
+      tags:
+      - OrderController
+      operationId: OrderController_create
+      summary: Criar pedido
+      description: "Reserva o estoque de cada item, calcula subtotal, desconto e total\
+        \ e grava o pedido com status CREATED."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          description: "Corpo inválido: cliente ausente, lista de itens vazia ou quantidade\
+            \ fora de 1 a 10."
+        "404":
+          description: O cliente ou algum produto não existe.
+        "409":
+          description: Algum produto não tem estoque suficiente.
+  /shop/api/orders/customer/{customerId}:
+    get:
+      tags:
+      - OrderController
+      operationId: OrderController_listByCustomer
+      summary: Listar pedidos do cliente
+      description: "Endpoint obsoleto: devolve todos os pedidos do cliente sem paginaç\
+        ão; prefira a listagem paginada."
+      deprecated: true
+      parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderResponse"
+  /shop/api/orders/{id}:
+    get:
+      tags:
+      - OrderController
+      operationId: OrderController_get
+      summary: Consultar pedido
+      description: Busca o pedido pelo identificador.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "404":
+          description: O pedido não existe.
+    delete:
+      tags:
+      - OrderController
+      operationId: OrderController_delete
+      summary: Excluir pedido
+      description: Remove definitivamente um pedido. Apenas administradores podem
+        excluir.
+      x-security-expression: hasRole('ADMIN')
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: O pedido não existe.
+        "422":
+          description: O pedido não está cancelado.
+  /shop/api/orders/{id}/cancel:
+    post:
+      tags:
+      - OrderController
+      operationId: OrderController_cancel
+      summary: Cancelar pedido
+      description: Cancelar um pedido já cancelado não tem efeito e devolve o pedido
+        como está.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "404":
+          description: O pedido não existe.
+        "422":
+          description: O pedido já foi enviado ou entregue.
+  /shop/api/orders/{id}/status:
+    patch:
+      tags:
+      - OrderController
+      operationId: OrderController_updateStatus
+      summary: Avançar status do pedido
+      description: "Apenas administradores alteram o status, sempre na ordem CREATED,\
+        \ PAID, SHIPPED, DELIVERED."
+      x-security-expression: hasRole('ADMIN')
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          description: Status ausente no corpo.
+        "404":
+          description: O pedido não existe.
+        "422":
+          description: A transição pedida não é permitida.
+  /shop/api/products:
+    get:
+      tags:
+      - ProductController
+      operationId: ProductController_list
+      summary: Listar produtos
+      description: "Aceita os parâmetros padrão de paginação do Spring Data (page,\
+        \ size e sort)."
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedModel_ProductResponse"
+    post:
+      tags:
+      - ProductController
+      operationId: ProductController_create
+      summary: Cadastrar produto
+      description: Apenas administradores cadastram produtos.
+      x-security-expression: hasRole('ADMIN')
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          description: "SKU, nome ou preço inválidos."
+        "409":
+          description: Já existe um produto com o SKU informado.
+  /shop/api/products/{id}:
+    get:
+      tags:
+      - ProductController
+      operationId: ProductController_get
+      summary: Consultar produto
+      description: Inclui preço e estoque atuais.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          description: O produto não existe.
+  /shop/api/products/{id}/stock:
+    patch:
+      tags:
+      - ProductController
+      operationId: ProductController_adjustStock
+      summary: Ajustar estoque
+      description: Valores negativos removem unidades. Apenas administradores ajustam
+        estoque.
+      x-security-expression: hasRole('ADMIN')
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAdjustmentRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          description: delta ausente ou motivo com mais de 200 caracteres.
+        "404":
+          description: O produto não existe.
+        "409":
+          description: O ajuste deixaria o estoque negativo.
+components:
+  schemas:
+    CreateCustomerRequest:
+      type: object
+      required:
+      - name
+      - email
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          minLength: 1
+          format: email
+    CreateOrderRequest:
+      type: object
+      description: Items to buy for an existing customer.
+      required:
+      - customerId
+      - items
+      properties:
+        customerId:
+          type: integer
+          format: int64
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemRequest"
+          minItems: 1
+          maxItems: 50
+    CreateProductRequest:
+      type: object
+      description: Data required to register a new product in the catalog.
+      required:
+      - sku
+      - name
+      - price
+      - stock
+      properties:
+        sku:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: "^[A-Z0-9-]+$"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        price:
+          type: number
+          minimum: 0.01
+        stock:
+          type: integer
+          format: int32
+          minimum: 0
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        name:
+          type: string
+        email:
+          type: string
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+    OrderItemRequest:
+      type: object
+      required:
+      - productId
+      - quantity
+      properties:
+        productId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 10
+    OrderItemResponse:
+      type: object
+      required:
+      - quantity
+      properties:
+        productId:
+          type: integer
+          format: int64
+        sku:
+          type: string
+        quantity:
+          type: integer
+          format: int32
+        unitPrice:
+          type: number
+        lineTotal:
+          type: number
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        customerId:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemResponse"
+        subtotal:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+    OrderStatus:
+      type: string
+      description: Lifecycle of an order.
+      enum:
+      - CREATED
+      - PAID
+      - SHIPPED
+      - DELIVERED
+      - CANCELLED
+    PageMetadata:
+      type: object
+      required:
+      - size
+      - number
+      - totalElements
+      - totalPages
+      properties:
+        size:
+          type: integer
+          format: int64
+        number:
+          type: integer
+          format: int64
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+    PageResponse_OrderResponse:
+      type: object
+      description: Page of results returned by list endpoints.
+      required:
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PagedModel_ProductResponse:
+      type: object
+      required:
+      - content
+      - page
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductResponse"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+    ProductResponse:
+      type: object
+      required:
+      - stock
+      properties:
+        id:
+          type: integer
+          format: int64
+        sku:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        stock:
+          type: integer
+          format: int32
+    StockAdjustmentRequest:
+      type: object
+      description: Relative stock change; negative values remove units.
+      required:
+      - delta
+      properties:
+        delta:
+          type: integer
+          format: int32
+        reason:
+          type: string
+          maxLength: 200
+    UpdateOrderStatusRequest:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          $ref: "#/components/schemas/OrderStatus"

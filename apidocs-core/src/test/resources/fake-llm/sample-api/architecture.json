@@ -1,0 +1,29 @@
+{
+  "summary": "A aplicação segue uma arquitetura em camadas: controllers recebem as requisições HTTP e validam os DTOs, services concentram as regras de negócio e as transações, repositories do Spring Data acessam o banco e as entidades JPA representam o modelo persistido.",
+  "layers": [
+    {"layer": "Controllers", "description": "Expõem os endpoints REST, validam a entrada com Bean Validation e delegam aos services."},
+    {"layer": "Services", "description": "Implementam as regras de estoque, desconto e ciclo de vida do pedido dentro de transações."},
+    {"layer": "Repositories", "description": "Interfaces Spring Data JPA com consultas derivadas do nome do método."},
+    {"layer": "Entities", "description": "Modelo persistido com JPA, com colunas de auditoria herdadas de BaseEntity."},
+    {"layer": "DTOs", "description": "Records de entrada e saída que isolam o contrato da API do modelo persistido."}
+  ],
+  "patterns": [
+    "Arquitetura em camadas",
+    "DTOs como records com métodos de fábrica from()",
+    "Tratamento global de exceções com @RestControllerAdvice",
+    "Paths centralizados em constantes na classe ApiPaths"
+  ],
+  "alertComments": [
+    {
+      "code": "ENTITY_EXPOSED",
+      "subject": "Customer",
+      "comment": "O endpoint devolve a entidade JPA Customer diretamente, acoplando o contrato da API ao modelo do banco e arriscando expor campos internos.",
+      "recommendation": "Retornar CustomerResponse, como já faz o endpoint de cadastro."
+    }
+  ],
+  "recommendations": [
+    "Trocar o retorno de GET /shop/api/customers/{id} por CustomerResponse.",
+    "Remover o endpoint obsoleto de pedidos por cliente depois de migrar os consumidores para a listagem paginada.",
+    "Adicionar controle de concorrência na baixa de estoque para evitar vender acima do disponível."
+  ]
+}

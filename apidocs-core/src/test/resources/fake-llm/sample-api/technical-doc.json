@@ -1,0 +1,28 @@
+{
+  "overview": "A Shop API gerencia o catálogo de produtos, o cadastro de clientes e o ciclo de vida dos pedidos de uma loja virtual.\n\nAplicações front-end usam a API para criar pedidos com reserva automática de estoque, acompanhar o status e consultar produtos. Administradores ajustam estoque e avançam pedidos pelas etapas de pagamento, envio e entrega.",
+  "domainConcepts": [
+    {"name": "Cliente", "description": "Pessoa que compra na loja, identificada por um e-mail único."},
+    {"name": "Produto", "description": "Item do catálogo com SKU único, preço e quantidade em estoque."},
+    {"name": "Pedido", "description": "Compra de um cliente, com itens, valores calculados e um status de ciclo de vida."},
+    {"name": "Item do pedido", "description": "Produto e quantidade dentro de um pedido, com o preço unitário da compra."}
+  ],
+  "businessRules": [
+    {"domain": "Pedidos", "rules": [
+      "O status evolui na ordem CREATED, PAID, SHIPPED, DELIVERED.",
+      "Pedidos enviados ou entregues não podem ser cancelados.",
+      "Somente pedidos cancelados podem ser excluídos.",
+      "Subtotais acima de 500,00 recebem 10% de desconto."
+    ]},
+    {"domain": "Estoque", "rules": [
+      "A criação do pedido baixa o estoque e o cancelamento o devolve.",
+      "O estoque nunca pode ficar negativo."
+    ]},
+    {"domain": "Cadastros", "rules": ["O SKU do produto e o e-mail do cliente são únicos."]}
+  ],
+  "errorHandling": "Os erros são tratados de forma centralizada por um @RestControllerAdvice, que devolve um corpo ApiError com status, erro e mensagem. Recursos inexistentes geram 404, violações de regra de negócio geram 409, transições de status inválidas geram 422 e falhas de validação geram 400.",
+  "glossary": [
+    {"term": "SKU", "definition": "Código único que identifica um produto no catálogo."},
+    {"term": "Subtotal", "definition": "Soma de preço unitário vezes quantidade de todos os itens, antes do desconto."},
+    {"term": "Desconto", "definition": "Abatimento de 10% aplicado a pedidos com subtotal acima de 500,00."}
+  ]
+}
