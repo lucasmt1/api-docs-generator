@@ -1,5 +1,8 @@
 package dev.apidocs.core.ai;
 
+import static dev.apidocs.core.testsupport.FakeSecrets.ANTHROPIC_KEY;
+import static dev.apidocs.core.testsupport.FakeSecrets.ANTHROPIC_OTHER_KEY;
+import static dev.apidocs.core.testsupport.FakeSecrets.OPENAI_PROJECT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,8 +64,8 @@ class ApiKeysTest {
 
     @Test
     void masksAKnownFormatKeyEchoedInPartWithoutLeavingAnyOfItsSecretCharacters() {
-        String key = "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
-        String gatewayKey = "sk-ant-api03-ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210";
+        String key = ANTHROPIC_KEY;
+        String gatewayKey = ANTHROPIC_OTHER_KEY;
 
         assertThat(ApiKeys.redact("key " + key.substring(0, 24) + "... is invalid", key))
                 .isEqualTo("key sk-***... is invalid");
@@ -95,7 +98,7 @@ class ApiKeysTest {
 
     @Test
     void redactsBearerTokensAndKnownKeyFormatsEvenWithoutAKey() {
-        String text = "Authorization: Bearer other-token-123 refused; also sk-proj-AbCdEfGhIjKlMnOpQrSt";
+        String text = "Authorization: Bearer other-token-123 refused; also " + OPENAI_PROJECT_KEY;
 
         assertThat(ApiKeys.redact(text, null)).isEqualTo("Authorization: Bearer *** refused; also sk-***");
         assertThat(ApiKeys.redact(text, " ")).isEqualTo("Authorization: Bearer *** refused; also sk-***");

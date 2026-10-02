@@ -1,5 +1,6 @@
 package dev.apidocs.core.ai;
 
+import static dev.apidocs.core.testsupport.FakeSecrets.GOOGLE_API_KEY_LONG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -95,7 +96,7 @@ class LlmClientFactoryTest {
 
     @Test
     void neverEchoesAnApiKeyPastedAsTheVariableNameEvenWhenItIsAValidName() {
-        for (String pasted : List.of("AIzaSyB1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s", "abcd1234efgh5678ijkl9012mnop")) {
+        for (String pasted : List.of(GOOGLE_API_KEY_LONG, "abcd1234efgh5678ijkl9012mnop")) {
             LlmSettings gemini = new LlmSettings(ProviderPreset.GEMINI, "gemini-3.8-flash",
                     ProviderPreset.GEMINI.baseUrl(), pasted, "high");
 

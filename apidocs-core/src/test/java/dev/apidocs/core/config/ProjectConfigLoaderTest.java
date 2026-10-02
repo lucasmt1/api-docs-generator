@@ -1,16 +1,31 @@
 package dev.apidocs.core.config;
 
+import static dev.apidocs.core.testsupport.FakeSecrets.AWS_ACCESS_KEY_ID;
+import static dev.apidocs.core.testsupport.FakeSecrets.GITHUB_TOKEN;
+import static dev.apidocs.core.testsupport.FakeSecrets.GOOGLE_API_KEY;
+import static dev.apidocs.core.testsupport.FakeSecrets.GROQ_KEY;
+import static dev.apidocs.core.testsupport.FakeSecrets.HUGGING_FACE_TOKEN;
+import static dev.apidocs.core.testsupport.FakeSecrets.OPENAI_PROJECT_KEY;
+import static dev.apidocs.core.testsupport.FakeSecrets.PERPLEXITY_KEY;
+import static dev.apidocs.core.testsupport.FakeSecrets.RISK_ASSESSMENT_GUIDELINES;
+import static dev.apidocs.core.testsupport.FakeSecrets.SLACK_TOKEN;
+import static dev.apidocs.core.testsupport.FakeSecrets.TASK_MANAGEMENT_GLOB;
+import static dev.apidocs.core.testsupport.FakeSecrets.XAI_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import dev.apidocs.core.ConfigException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class ProjectConfigLoaderTest {
 
@@ -62,17 +77,7 @@ class ProjectConfigLoaderTest {
     }
 
     @ParameterizedTest(name = "[{index}] {1}")
-    @CsvSource(delimiter = '|', textBlock = """
-            'llm: {provider: openai, apiKeyEnv: sk-proj-AbCdEfGhIjKlMnOpQrSt}'                 | llm.apiKeyEnv          | sk-proj-AbCdEfGhIjKlMnOpQrSt
-            'context: {instructions: "Test with AIzaSyB1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r."}'   | context.instructions   | AIzaSyB1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r
-            'context: {glossary: {Access: ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789}}'          | context.glossary.Access | ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789
-            'exclude: ["**/legacy/**", AKIAIOSFODNN7EXAMPLE]'                                   | exclude[1]             | AKIAIOSFODNN7EXAMPLE
-            'notes: {deep: [{x: xoxb-1234567890-abcdefghij}]}'                                  | notes.deep[0].x        | xoxb-1234567890-abcdefghij
-            'llm: {provider: custom, apiKeyEnv: gsk_AbCdEfGhIjKlMnOpQrStUv01}'                 | llm.apiKeyEnv          | gsk_AbCdEfGhIjKlMnOpQrStUv01
-            'context: {description: "Model token hf_AbCdEfGhIjKlMnOpQrStUv01"}'                | context.description    | hf_AbCdEfGhIjKlMnOpQrStUv01
-            'context: {glossary: {Grok: xai-AbCdEfGhIjKlMnOpQrStUv01}}'                        | context.glossary.Grok  | xai-AbCdEfGhIjKlMnOpQrStUv01
-            'exclude: [pplx-AbCdEfGhIjKlMnOpQrStUv01]'                                          | exclude[0]             | pplx-AbCdEfGhIjKlMnOpQrStUv01
-            """)
+    @MethodSource("yamlWithASecretAt")
     void rejectsSecretValuesAnywhereWithoutEchoingThem(String yaml, String path, String secret) throws IOException {
         Path leaky = file(yaml + "\n");
 
@@ -83,9 +88,31 @@ class ProjectConfigLoaderTest {
                 .hasMessageNotContaining(secret);
     }
 
+    static Stream<Arguments> yamlWithASecretAt() {
+        return Stream.of(
+                arguments("llm: {provider: openai, apiKeyEnv: " + OPENAI_PROJECT_KEY + "}",
+                        "llm.apiKeyEnv", OPENAI_PROJECT_KEY),
+                arguments("context: {instructions: \"Test with " + GOOGLE_API_KEY + ".\"}",
+                        "context.instructions", GOOGLE_API_KEY),
+                arguments("context: {glossary: {Access: " + GITHUB_TOKEN + "}}",
+                        "context.glossary.Access", GITHUB_TOKEN),
+                arguments("exclude: [\"**/legacy/**\", " + AWS_ACCESS_KEY_ID + "]",
+                        "exclude[1]", AWS_ACCESS_KEY_ID),
+                arguments("notes: {deep: [{x: " + SLACK_TOKEN + "}]}",
+                        "notes.deep[0].x", SLACK_TOKEN),
+                arguments("llm: {provider: custom, apiKeyEnv: " + GROQ_KEY + "}",
+                        "llm.apiKeyEnv", GROQ_KEY),
+                arguments("context: {description: \"Model token " + HUGGING_FACE_TOKEN + "\"}",
+                        "context.description", HUGGING_FACE_TOKEN),
+                arguments("context: {glossary: {Grok: " + XAI_KEY + "}}",
+                        "context.glossary.Grok", XAI_KEY),
+                arguments("exclude: [" + PERPLEXITY_KEY + "]",
+                        "exclude[0]", PERPLEXITY_KEY));
+    }
+
     @Test
     void rejectsKeysThatLookLikeSecretsWithoutEchoingThem() throws IOException {
-        Path leaky = file("context:\n  glossary:\n    sk-proj-AbCdEfGhIjKlMnOpQrSt: our key\n");
+        Path leaky = file("context:\n  glossary:\n    " + OPENAI_PROJECT_KEY + ": our key\n");
 
         assertThatThrownBy(() -> new ProjectConfigLoader().load(leaky))
                 .isInstanceOf(ConfigException.class)
@@ -98,15 +125,15 @@ class ProjectConfigLoaderTest {
     void acceptsOrdinaryTextThatOnlyResemblesASecretFormat() throws IOException {
         ProjectConfigFile config = new ProjectConfigLoader().load(file("""
                 context:
-                  instructions: "Follow the risk-assessment-guidelines; tokens are described in docs/sk-notes.md."
+                  instructions: "Follow the %s; tokens are described in docs/sk-notes.md."
                   glossary:
                     Bearer: "Whoever holds a bearer token"
                 exclude:
-                  - "**/task-management-service/**"
-                """)).orElseThrow();
+                  - "%s"
+                """.formatted(RISK_ASSESSMENT_GUIDELINES, TASK_MANAGEMENT_GLOB))).orElseThrow();
 
-        assertThat(config.context().instructions()).startsWith("Follow the risk-assessment-guidelines");
-        assertThat(config.exclude()).containsExactly("**/task-management-service/**");
+        assertThat(config.context().instructions()).startsWith("Follow the " + RISK_ASSESSMENT_GUIDELINES);
+        assertThat(config.exclude()).containsExactly(TASK_MANAGEMENT_GLOB);
     }
 
     @Test

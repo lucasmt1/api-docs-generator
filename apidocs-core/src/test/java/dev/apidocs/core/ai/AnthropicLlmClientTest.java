@@ -1,5 +1,6 @@
 package dev.apidocs.core.ai;
 
+import static dev.apidocs.core.testsupport.FakeSecrets.ANTHROPIC_MEDIUM_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -375,7 +376,7 @@ class AnthropicLlmClientTest {
 
     @Test
     void keepsApiErrorTextOutOfTheMessageAndPutsItRedactedIntoTheDetail() {
-        String key = "sk-ant-api03-AbCdEfGhIjKlMnOpQrSt";
+        String key = ANTHROPIC_MEDIUM_KEY;
         try (StubHttpServer server = new StubHttpServer()) {
             server.enqueue(Reply.json(403, "{\"type\":\"error\",\"error\":{\"type\":\"permission_error\",\"message\":"
                     + "\"Key sk-ant-api03... of organization org-AbC123 may not use this model (sent " + key + ")\"}}"));

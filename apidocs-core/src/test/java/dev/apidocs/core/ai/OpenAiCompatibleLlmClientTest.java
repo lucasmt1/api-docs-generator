@@ -1,5 +1,7 @@
 package dev.apidocs.core.ai;
 
+import static dev.apidocs.core.testsupport.FakeSecrets.GOOGLE_SHORT_KEY;
+import static dev.apidocs.core.testsupport.FakeSecrets.OPENAI_PROJECT_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -166,7 +168,7 @@ class OpenAiCompatibleLlmClientTest {
 
     @Test
     void masksTheApiKeyInServerTextCopiedIntoErrors() {
-        String key = "AIzaSyFAKE0123456789abcdef";
+        String key = GOOGLE_SHORT_KEY;
         try (StubHttpServer server = new StubHttpServer()) {
             server.enqueue(Reply.json(401, "{\"error\":\"invalid header Authorization: Bearer " + key + "\"}"))
                     .enqueue(Reply.json(200, key + " is not a valid key"))
@@ -186,7 +188,7 @@ class OpenAiCompatibleLlmClientTest {
 
     @Test
     void keepsServerTextOutOfTheMessageAndPutsItRedactedIntoTheDetail() {
-        String key = "sk-proj-AbCdEfGhIjKlMnOpQrSt";
+        String key = OPENAI_PROJECT_KEY;
         String body = "{\"error\":{\"message\":\"Key sk-proj-AbCd... of organization org-AbC123 has no access to "
                 + "project 'projects/123456789'\"}}";
         try (StubHttpServer server = new StubHttpServer()) {
