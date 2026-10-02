@@ -5,6 +5,7 @@ import dev.apidocs.core.ConfigException;
 import dev.apidocs.core.ai.LlmSettings;
 import dev.apidocs.core.ai.ProviderPreset;
 import dev.apidocs.core.source.SourceLimits;
+import dev.apidocs.core.support.Secrets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -62,11 +63,19 @@ public final class ConfigResolver {
             throw new ConfigException("The output directory must not be the project directory or one of its parents: "
                     + outputDir);
         }
-        Path cacheDir = (overrides.cacheDir() != null ? overrides.cacheDir() : Path.of(".apidocs-cache"))
+        Path cacheDir = (overrides.cacheDir() != null ? overrides.cacheDir() : defaultCacheDir())
                 .toAbsolutePath().normalize();
         return new GeneratorConfig(projectDir, outputDir, cacheDir, !overrides.noCache(), language,
                 new LlmSettings(preset, model, baseUrl, apiKeyEnv, DEFAULT_EFFORT), file.context(), file.exclude(),
                 overrides.strict(), SourceLimits.DEFAULT, DEFAULT_MAX_OUTPUT_TOKENS);
+    }
+
+    /**
+     * {@code <user home>/.cache/apidocs}: cached answers quote the analyzed source code, so by default they live per
+     * user, never in the current directory, which is often the analyzed (and committed) project itself.
+     */
+    private static Path defaultCacheDir() {
+        return Path.of(System.getProperty("user.home"), ".cache", "apidocs");
     }
 
     /** Self-hosted or user-chosen endpoints; gemini, openai and anthropic always use their official one. */
@@ -77,6 +86,12 @@ public final class ConfigResolver {
     private static void requireAllowedKeyVariable(String name, ProviderPreset preset) {
         if (name.isBlank() || name.equals(preset.apiKeyEnv()) || ALLOWED_KEY_VARIABLES.matcher(name).matches()) {
             return;
+        }
+        if (!Secrets.isShowableVariableName(name)) {
+            // never echo it: the key itself is sometimes pasted where its variable name belongs
+            throw new ConfigException(ProjectConfigLoader.FILE_NAME + " llm.apiKeyEnv must be the NAME of an "
+                    + "environment variable (the value is not shown in case it is a key); name a variable starting "
+                    + "with APIDOCS_, or pass --api-key-env to use another variable");
         }
         throw new ConfigException(ProjectConfigLoader.FILE_NAME + " may only name API key variables starting with "
                 + "APIDOCS_ (got " + name + "); pass --api-key-env to use another variable");

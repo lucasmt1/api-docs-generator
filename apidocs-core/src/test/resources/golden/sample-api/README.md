@@ -1,6 +1,6 @@
 # Shop API — Documentação da API
 
-Gerada pelo apidocs a partir do código-fonte. Textos narrativos: fake:model.
+Gerada pelo apidocs a partir do código-fonte. Textos narrativos: dry-run.
 
 ## Documentos
 

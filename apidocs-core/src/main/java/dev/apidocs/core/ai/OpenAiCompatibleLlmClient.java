@@ -37,6 +37,8 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
     private static final System.Logger LOG = System.getLogger(OpenAiCompatibleLlmClient.class.getName());
     private static final Set<Integer> RETRYABLE = Set.of(408, 429, 500, 502, 503, 504);
     private static final String SCHEMA_INSTRUCTION = "\n\nRespond ONLY with a JSON object that matches this JSON Schema:\n";
+    /** How failure messages name the server: never by host, because they end up in the published documents. */
+    private static final String PROVIDER = "the LLM provider";
     /** Keeps {@code 1L << n} and the multiplication by the base delay far from overflow. */
     private static final int MAX_BACKOFF_DOUBLINGS = 20;
 
@@ -87,15 +89,16 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
                     pause(delay(attempt, Optional.empty()));
                     continue;
                 }
-                throw new LlmException("Request to " + endpoint.getHost() + " failed: " + e.getMessage(), true, e);
+                throw new LlmException("Request to " + PROVIDER + " failed (" + e.getClass().getSimpleName() + ")",
+                        detail(e.getMessage()), true, e);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new CancelledException("Interrupted while waiting for the LLM");
             } catch (IllegalArgumentException e) {
                 // Deliberately no message or cause from the JDK: for an invalid header it quotes the whole value,
                 // which would put the API key into warnings and stack traces.
-                throw new LlmException("Invalid request to " + endpoint.getHost()
-                        + ": the HTTP client rejected it (check the base URL and the API key)", false);
+                throw new LlmException("Invalid request to " + PROVIDER
+                        + ": the HTTP client rejected it (check the base URL and the API key)", host(), false);
             }
             int status = response.statusCode();
             if (status == 200) {
@@ -113,8 +116,7 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
                 pause(delay(attempt, response.headers().firstValue("Retry-After")));
                 continue;
             }
-            throw new LlmException("HTTP " + status + " from " + endpoint.getHost() + ": " + serverText(response.body()),
-                    retryable);
+            throw new LlmException("HTTP " + status + " from " + PROVIDER, detail(response.body()), retryable);
         }
     }
 
@@ -163,13 +165,13 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
             root = JsonSupport.mapper().readTree(body);
         } catch (JsonProcessingException malformedJson) {
             // no cause: Jackson quotes the offending token, which may be an echoed API key
-            throw new LlmException("Invalid JSON from " + endpoint.getHost() + ": " + serverText(body), false);
+            throw new LlmException("Invalid JSON from " + PROVIDER, detail(body), false);
         }
         JsonNode choice = root.path("choices").path(0);
         JsonNode message = choice.path("message");
         if (!message.isObject()) {
-            throw new LlmException("Unexpected answer from " + endpoint.getHost() + " (no message in the first choice): "
-                    + serverText(body), false);
+            throw new LlmException("Unexpected answer from " + PROVIDER + " (no message in the first choice)",
+                    detail(body), false);
         }
         String finish = choice.path("finish_reason").asText("");
         boolean refused = message.hasNonNull("refusal") && !message.get("refusal").asText().isBlank()
@@ -214,15 +216,16 @@ public final class OpenAiCompatibleLlmClient implements LlmClient {
     }
 
     /**
-     * Server text for an error message: the API key masked first (gateways and proxies may echo request headers),
-     * then flattened and shortened.
+     * Detail of a failure (console only): the endpoint's host, then the redacted text of the server or the JDK.
+     * Neither goes into the message, which is persisted in the documents: providers name accounts and projects in
+     * their errors, and a self-hosted endpoint's host may be internal.
      */
-    private String serverText(String text) {
-        String masked = text == null ? "" : text;
-        if (apiKey != null && !apiKey.isBlank()) {
-            masked = masked.replace(apiKey, "***");
-        }
-        String flat = masked.replaceAll("\\s+", " ").strip();
-        return flat.length() > 300 ? flat.substring(0, 300) + "..." : flat;
+    private String detail(String text) {
+        String redacted = ApiKeys.redact(text, apiKey);
+        return redacted.isEmpty() ? host() : host() + ": " + redacted;
+    }
+
+    private String host() {
+        return endpoint.getHost() == null ? "unknown host" : endpoint.getHost();
     }
 }

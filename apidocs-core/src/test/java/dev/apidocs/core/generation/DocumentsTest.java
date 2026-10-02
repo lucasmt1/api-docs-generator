@@ -121,6 +121,19 @@ class DocumentsTest {
     }
 
     @Test
+    void saysThatDryRunPromptsHoldSourceCodeAndAreGitIgnoredOnlyWhenTheyAreWritten() {
+        String english = new IndexDocument().render(context("en", narratives()), List.of(), true);
+        String portuguese = new IndexDocument().render(context("pt-BR", narratives()), List.of(), true);
+
+        assertThat(english).contains("| [model.json](model.json) | Raw model extracted from the code. |\n\n"
+                + "`prompts/` holds the prompts that would be sent to an LLM; they contain source code, so the folder "
+                + "is git-ignored (`prompts/.gitignore`).\n\n## Summary");
+        assertThat(portuguese).contains("`prompts/` contém os prompts que seriam enviados a um LLM; eles incluem "
+                + "código-fonte, por isso a pasta é ignorada pelo git (`prompts/.gitignore`).");
+        assertThat(new IndexDocument().render(context("en", narratives()), List.of())).doesNotContain("prompts/");
+    }
+
+    @Test
     void fallsBackToFactsAndPlaceholdersWithoutNarratives() {
         DocumentContext empty = context("en", NarrativeSet.empty());
 

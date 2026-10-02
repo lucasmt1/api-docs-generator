@@ -61,6 +61,32 @@ class OutputWriterTest {
     }
 
     @Test
+    void replacesAPreviousOutputWhosePromptsAreGitIgnored() throws IOException {
+        Path out = dir.resolve("docs");
+        writer.writeAtomically(out, Map.of("generation-report.json", "{}", "prompts/01-a.md", "old",
+                "prompts/.gitignore", "*\n"));
+
+        writer.writeAtomically(out, Map.of("generation-report.json", "{\"v\":2}"));
+
+        try (Stream<Path> entries = Files.list(out)) {
+            assertThat(entries.map(p -> p.getFileName().toString())).containsExactly("generation-report.json");
+        }
+        assertSiblings("docs");
+    }
+
+    @Test
+    void refusesAGitignoreOutsideThePromptsFolder() throws IOException {
+        Path out = Files.createDirectories(dir.resolve("mine"));
+        Files.writeString(out.resolve("generation-report.json"), "{}");
+        Files.writeString(out.resolve(".gitignore"), "target/\n");
+
+        assertThatThrownBy(() -> writer.writeAtomically(out, Map.of("generation-report.json", "{\"v\":2}")))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining(".gitignore");
+        assertThat(Files.readString(out.resolve(".gitignore"))).isEqualTo("target/\n");
+    }
+
+    @Test
     void replacesAPreviousOutputDecoratedWithOsMetadataFiles() throws IOException {
         Path out = dir.resolve("docs");
         writer.writeAtomically(out, Map.of("generation-report.json", "{}", "prompts/01-a.md", "old"));

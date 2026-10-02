@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.apidocs.core.ConfigException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -90,6 +91,20 @@ class LlmClientFactoryTest {
         assertThatThrownBy(() -> factory.create(named, Map.of(), cache, true))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("MY_OPENAI_KEY");
+    }
+
+    @Test
+    void neverEchoesAnApiKeyPastedAsTheVariableNameEvenWhenItIsAValidName() {
+        for (String pasted : List.of("AIzaSyB1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s", "abcd1234efgh5678ijkl9012mnop")) {
+            LlmSettings gemini = new LlmSettings(ProviderPreset.GEMINI, "gemini-3.8-flash",
+                    ProviderPreset.GEMINI.baseUrl(), pasted, "high");
+
+            assertThatThrownBy(() -> factory.create(gemini, Map.of(), cache, true))
+                    .isInstanceOf(ConfigException.class)
+                    .hasMessageContaining("--api-key-env")
+                    .hasMessageContaining("not shown")
+                    .hasMessageNotContaining(pasted);
+        }
     }
 
     @Test

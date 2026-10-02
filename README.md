@@ -50,7 +50,7 @@ mvn -B verify
 java -jar apidocs-cli/target/apidocs.jar generate examples/sample-api --output api-docs
 ```
 
-Without a provider the tool runs in `dry-run` mode: every fact is generated, narrative sections show a placeholder and the prompts are saved in `api-docs/prompts/`.
+Without a provider the tool runs in `dry-run` mode: every fact is generated, narrative sections show a placeholder and the prompts are saved in `api-docs/prompts/`. The prompts quote your source code, so that folder carries its own `.gitignore` and is never committed or published along with the documentation.
 
 ### Free LLM options
 
@@ -76,9 +76,11 @@ Paid providers work the same way: `--provider openai` (`OPENAI_API_KEY`) or `--p
 
 `custom` requires both `--model` and `--base-url`; its key is optional, so keyless local servers work without `--api-key-env`.
 
-API keys are read only from environment variables, never from a file or a flag value. A key that contains control or non-ASCII characters (for example a trailing newline pasted from a file) is rejected with an error message that never shows the key. If the key itself is pasted into `--api-key-env` (or any value that is not a valid variable name), the error says so without echoing it. Error text returned by an OpenAI-compatible server is copied into warnings with the key masked as `***`.
+API keys are read only from environment variables, never from a file or a flag value. A key that contains control or non-ASCII characters (for example a trailing newline pasted from a file) is rejected with an error message that never shows the key. If the key itself is pasted where a variable name belongs (`--api-key-env` or `llm.apiKeyEnv`), that is, a value that is not a valid variable name or that looks like a key, the error says so without echoing it.
 
-Answers are cached in `.apidocs-cache/` (in the current directory, or wherever `--cache-dir` points): running again on unchanged code costs nothing and produces identical documents (only the timestamp in `generation-report.json` changes). Use `--no-cache` to bypass it.
+When an LLM call fails, the warning written to the output (`README.md`, `generation-report.json`) holds only a short summary such as `HTTP 429 from the LLM provider`, never the endpoint's host (a self-hosted one may be internal). The host and what the provider said, which can name your organization, project or account, are only logged to the console (`LLM call failed for <section>: <host>: ...`), with the API key, bearer tokens and other recognizable secrets masked as `***`.
+
+Answers are cached per user in `~/.cache/apidocs/` (`%USERPROFILE%\.cache\apidocs` on Windows) unless `--cache-dir` points elsewhere; the default lies outside any analyzed project because cached answers quote its source code. Running again on unchanged code costs nothing and produces identical documents (only the timestamp in `generation-report.json` changes). Use `--no-cache` to bypass it.
 
 ## CLI
 
@@ -121,6 +123,7 @@ exclude:
 The file lives inside the repository being analyzed, so it is treated as untrusted when it comes to credentials:
 
 - Keys named like secrets (`apiKey`, `token`, `secret`, `password`...) are rejected at any nesting level, glossary terms included (a glossary entry called `token` needs another name).
+- Values that look like secrets (`sk-...`, `AIza...`, `gsk_...`, `hf_...`, `xai-...`, `pplx-...`, `ghp_...`, `github_pat_...`, `AKIA...` or `xox?-...` tokens, or a `-----BEGIN ... PRIVATE KEY-----` block) are rejected wherever they appear, list items and glossary definitions included; the error names the path (say `context.instructions`) but never the value.
 - Its `llm.provider` and `llm.model` can switch a run from the default `dry-run` to a paid provider, which then uses the key found in your environment. Check the file (or pass `--provider`) before running on a repository you do not trust.
 - `llm.baseUrl` is honored only for the `custom` and `ollama` providers; `gemini`, `openai` and `anthropic` always use their official endpoint.
 - `llm.apiKeyEnv` must be the provider's default variable or start with `APIDOCS_`; to read any other variable, use the `--api-key-env` flag.
@@ -130,14 +133,14 @@ The file lives inside the repository being analyzed, so it is treated as untrust
 
 | File | Content |
 |---|---|
-| `README.md` | Index, numbers and warnings |
+| `README.md` | Index, numbers and warnings; names the provider and model that wrote the texts (never the LLM endpoint) |
 | `technical-documentation.md` | Purpose, stack, domain concepts, business rules, error handling, glossary |
 | `api-reference.md` | Every endpoint: parameters, bodies, responses, rules and examples |
 | `architecture-overview.md` | Layer and ER diagrams (Mermaid), metrics, rule-based alerts with commentary |
 | `openapi.yaml` | OpenAPI 3.1 |
 | `model.json` | Raw model extracted from the code |
 | `generation-report.json` | Provider, model, tokens, duration, warnings |
-| `prompts/` | The prompts that would be sent to an LLM (`dry-run` only) |
+| `prompts/` | The prompts that would be sent to an LLM (`dry-run` only); they quote the source code, so the folder ignores itself in git (`prompts/.gitignore`) |
 
 The output folder is written all at once and only replaces a previous apidocs output: a non-empty folder is overwritten only if it contains `generation-report.json` and nothing but files apidocs writes (OS metadata such as `.DS_Store` or `Thumbs.db` is tolerated). Any other folder is left untouched and the run fails with exit code 1 before the analysis and any LLM call; pick another `--output`.
 

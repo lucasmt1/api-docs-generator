@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import dev.apidocs.core.ConfigException;
+import dev.apidocs.core.support.Secrets;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,7 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
-/** Reads {@code .apidocs.yml}; refuses secrets because the file is committed to the repository. */
+/** Reads {@code .apidocs.yml}; refuses secrets (by key name or value format) because the file is committed. */
 public final class ProjectConfigLoader {
 
     public static final String FILE_NAME = ".apidocs.yml";
@@ -63,10 +64,18 @@ public final class ProjectConfigLoader {
                 globs(root.path("exclude"), fileName));
     }
 
+    /**
+     * Refuses keys named like secrets, and keys or scalar values that hold a secret of a known format, at any level.
+     * Messages name the path but never the value.
+     */
     private static void rejectSecrets(JsonNode node, String path) {
         if (node.isObject()) {
             node.properties().forEach(entry -> {
                 String key = entry.getKey();
+                if (Secrets.containsKnownSecret(key)) {
+                    // the path would quote the key itself, so name its parent
+                    throw secretFound(path.isEmpty() ? "a top-level key" : "a key in " + path);
+                }
                 String childPath = path.isEmpty() ? key : path + "." + key;
                 String normalized = key.toLowerCase(Locale.ROOT).replace("_", "").replace("-", "");
                 if (SECRET_KEYS.contains(normalized)) {
@@ -76,8 +85,17 @@ public final class ProjectConfigLoader {
                 rejectSecrets(entry.getValue(), childPath);
             });
         } else if (node.isArray()) {
-            node.forEach(child -> rejectSecrets(child, path));
+            for (int i = 0; i < node.size(); i++) {
+                rejectSecrets(node.get(i), path + "[" + i + "]");
+            }
+        } else if (node.isValueNode() && Secrets.containsKnownSecret(node.asText())) {
+            throw secretFound(path);
         }
+    }
+
+    private static ConfigException secretFound(String where) {
+        return new ConfigException(FILE_NAME + " " + where
+                + " looks like a secret (API key/token); keep secrets in environment variables.");
     }
 
     /** The child mapping {@code field} of {@code parent}; an absent or null entry is an empty mapping. */

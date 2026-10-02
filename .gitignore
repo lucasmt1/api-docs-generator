@@ -5,3 +5,6 @@ target/
 .DS_Store
 .apidocs-cache/
 api-docs/
+.env
+.env.*
+!.env.example

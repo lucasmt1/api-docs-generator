@@ -16,6 +16,8 @@ public final class StructuredGenerator {
     public record Result<T>(Optional<T> value, TokenUsage usage, int calls, List<Warning> warnings) {
     }
 
+    private static final System.Logger LOG = System.getLogger(StructuredGenerator.class.getName());
+
     private final LlmClient client;
 
     public StructuredGenerator(LlmClient client) {
@@ -34,6 +36,10 @@ public final class StructuredGenerator {
             try {
                 response = client.complete(new LlmRequest(purpose, systemPrompt, prompt, schema, maxOutputTokens));
             } catch (LlmException e) {
+                // The warning ends up in the generated documents, so it carries only the safe summary; what the
+                // provider said may name accounts or projects and is shown on the console only.
+                LOG.log(System.Logger.Level.WARNING, "LLM call failed for {0}: {1}", purpose,
+                        e.detail().isEmpty() ? e.getMessage() : e.detail());
                 return new Result<>(Optional.empty(), usage, calls,
                         List.of(new Warning("LLM_CALL_FAILED", e.getMessage(), purpose)));
             }

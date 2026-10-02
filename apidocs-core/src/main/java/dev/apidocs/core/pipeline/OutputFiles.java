@@ -17,6 +17,12 @@ final class OutputFiles {
     static final String REPORT = "generation-report.json";
     /** Directory with one markdown file per recorded prompt (dry-run only). */
     static final String PROMPTS_DIR = "prompts";
+    /**
+     * Written into {@link #PROMPTS_DIR} with {@link #PROMPTS_GITIGNORE_CONTENT}: the prompts quote the analyzed source
+     * code, so a later {@code git add} of the output folder (a pull request, a Pages site) must never pick them up.
+     */
+    static final String PROMPTS_GITIGNORE = ".gitignore";
+    static final String PROMPTS_GITIGNORE_CONTENT = "*\n";
 
     /** Regular files that may sit directly in an output folder. */
     static final Set<String> FILES = Set.of(README, TECHNICAL_DOCUMENTATION, API_REFERENCE, ARCHITECTURE_OVERVIEW,

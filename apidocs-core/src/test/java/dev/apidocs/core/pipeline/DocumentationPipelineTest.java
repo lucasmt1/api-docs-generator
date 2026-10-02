@@ -8,7 +8,10 @@ import dev.apidocs.core.CancellationToken;
 import dev.apidocs.core.CancelledException;
 import dev.apidocs.core.ConfigException;
 import dev.apidocs.core.ai.DryRunLlmClient;
+import dev.apidocs.core.ai.LlmClient;
 import dev.apidocs.core.ai.LlmException;
+import dev.apidocs.core.ai.LlmRequest;
+import dev.apidocs.core.ai.LlmResponse;
 import dev.apidocs.core.config.ConfigOverrides;
 import dev.apidocs.core.config.ConfigResolver;
 import dev.apidocs.core.config.GeneratorConfig;
@@ -111,6 +114,48 @@ class DocumentationPipelineTest {
     }
 
     @Test
+    void dryRunPromptsHoldSourceCodeSoTheyIgnoreThemselvesInGit() throws IOException {
+        Path project = TinyProject.write(dir.resolve("tiny"));
+
+        Path out = pipeline.generate(config(project, false), new DryRunLlmClient(), ProgressListener.NONE,
+                new CancellationToken()).outputDir();
+
+        assertThat(Files.readString(out.resolve("prompts/.gitignore"))).isEqualTo("*\n");
+        assertThat(Files.readString(out.resolve("README.md")))
+                .contains("`prompts/` holds the prompts that would be sent to an LLM");
+    }
+
+    @Test
+    void namesTheConfiguredProviderAndModelButNeverTheLlmHost() throws IOException {
+        Path project = TinyProject.write(dir.resolve("tiny"));
+        GeneratorConfig custom = new ConfigResolver().resolve(new ConfigOverrides(project, dir.resolve("out"), null,
+                "custom", "m1", "http://llm.internal.example:8080/v1", null, "en", dir.resolve("cache"), true, false),
+                Map.of());
+        FakeLlmClient answers = narratives();
+        LlmClient hosted = new LlmClient() {
+            @Override
+            public String id() {
+                return "llm.internal.example:m1";
+            }
+
+            @Override
+            public LlmResponse complete(LlmRequest request) {
+                return answers.complete(request);
+            }
+        };
+
+        Path out = pipeline.generate(custom, hosted, ProgressListener.NONE, new CancellationToken()).outputDir();
+
+        assertThat(Files.readString(out.resolve("README.md"))).contains("Narrative texts: custom / m1.");
+        try (Stream<Path> files = Files.list(out)) {
+            for (Path file : files.toList()) {
+                assertThat(Files.readString(file)).as(file.getFileName().toString())
+                        .doesNotContain("llm.internal.example");
+            }
+        }
+    }
+
+    @Test
     void regeneratesOverItsOwnPreviousOutputIncludingPrompts() {
         Path project = TinyProject.write(dir.resolve("tiny"));
         pipeline.generate(config(project, false), new DryRunLlmClient(), ProgressListener.NONE, new CancellationToken());
@@ -135,6 +180,25 @@ class DocumentationPipelineTest {
         PipelineResult lenient = pipeline.generate(config(project, false), FakeLlmClient.byPurpose(Map.of()),
                 ProgressListener.NONE, new CancellationToken());
         assertThat(lenient.warnings()).extracting(Warning::code).contains("LLM_OUTPUT_INVALID");
+    }
+
+    @Test
+    void writesOnlyTheSummaryOfProviderFailuresIntoTheDeliverables() throws IOException {
+        Path project = TinyProject.write(dir.resolve("tiny"));
+        FakeLlmClient failing = new FakeLlmClient(request -> {
+            throw new LlmException("HTTP 429 from the LLM provider",
+                    "api.example.test: Quota exceeded for organization org-AbC123", true);
+        });
+
+        Path out = pipeline.generate(config(project, false), failing, ProgressListener.NONE, new CancellationToken())
+                .outputDir();
+
+        for (String name : List.of("README.md", "generation-report.json")) {
+            assertThat(Files.readString(out.resolve(name))).as(name)
+                    .contains("HTTP 429 from the LLM provider")
+                    .doesNotContain("api.example.test")
+                    .doesNotContain("org-AbC123");
+        }
     }
 
     @Test

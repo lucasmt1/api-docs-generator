@@ -1,15 +1,13 @@
 package dev.apidocs.core.ai;
 
 import dev.apidocs.core.ConfigException;
+import dev.apidocs.core.support.Secrets;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /** Builds the configured adapter and its decorators: adapter, then rate limit, then cache. */
 public final class LlmClientFactory {
-
-    private static final Pattern VARIABLE_NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
 
     /**
      * API keys come only from {@code environment}. Nothing thrown from here contains a key: an unusable key or base
@@ -47,11 +45,12 @@ public final class LlmClientFactory {
         String variable = settings.apiKeyEnv() == null ? "" : settings.apiKeyEnv();
         String value = variable.isBlank() ? null : environment.get(variable);
         if (value == null || value.isBlank()) {
-            if (!variable.isBlank() && !VARIABLE_NAME.matcher(variable).matches()) {
+            if (!variable.isBlank() && !Secrets.isShowableVariableName(variable)) {
                 // never echo it: users sometimes paste the key itself instead of the variable name
                 throw new ConfigException("Missing API key for provider '" + settings.provider().id()
-                        + "': the --api-key-env value is not a valid environment variable name (not shown, in case"
-                        + " it is the key itself); pass the name of the variable that holds the key.");
+                        + "': the --api-key-env value looks like an API key or is not a valid environment variable"
+                        + " name (not shown, in case it is the key itself); pass the name of the variable that holds"
+                        + " the key.");
             }
             throw new ConfigException("Missing API key for provider '" + settings.provider().id() + "': set the "
                     + (variable.isBlank() ? "API key" : variable) + " environment variable, "

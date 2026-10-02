@@ -124,8 +124,9 @@ public final class OutputWriter {
             if (name.equals(OutputFiles.PROMPTS_DIR) && isPlainDirectory(entry)) {
                 for (Path prompt : entries(entry)) {
                     String promptName = prompt.getFileName().toString();
-                    boolean markdown = promptName.endsWith(".md") && isRegularFile(prompt);
-                    if (!markdown && !isOsMetadata(prompt)) {
+                    boolean ours = (promptName.endsWith(".md") || promptName.equals(OutputFiles.PROMPTS_GITIGNORE))
+                            && isRegularFile(prompt);
+                    if (!ours && !isOsMetadata(prompt)) {
                         return Optional.of(OutputFiles.PROMPTS_DIR + "/" + promptName);
                     }
                 }

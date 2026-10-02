@@ -48,7 +48,7 @@ final class GenerateCommand implements Callable<Integer> {
     @Option(names = "--config", description = "Path to a .apidocs.yml file (default: <project-dir>/.apidocs.yml).")
     Path config;
 
-    @Option(names = "--cache-dir", description = "LLM response cache directory (default: ./.apidocs-cache).")
+    @Option(names = "--cache-dir", description = "LLM response cache directory (default: ~/.cache/apidocs).")
     Path cacheDir;
 
     @Option(names = "--no-cache", description = "Do not read or write the LLM response cache.")

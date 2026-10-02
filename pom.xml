@@ -114,6 +114,8 @@
             <systemPropertyVariables>
               <!-- swagger-parser brings SLF4J without a provider; silence its "No providers" notice -->
               <slf4j.internal.verbosity>ERROR</slf4j.internal.verbosity>
+              <!-- safety net: no test may ever write into the real home (the default LLM cache lives there) -->
+              <user.home>${project.build.directory}/test-home</user.home>
             </systemPropertyVariables>
           </configuration>
         </plugin>

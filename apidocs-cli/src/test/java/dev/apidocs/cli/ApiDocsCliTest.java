@@ -63,7 +63,8 @@ class ApiDocsCliTest {
 
     @Test
     void explainsMissingApiKeys() {
-        int code = run(Map.of(), "generate", SAMPLE, "-o", dir.resolve("docs").toString(), "--provider", "gemini");
+        int code = run(Map.of(), "generate", SAMPLE, "-o", dir.resolve("docs").toString(), "--provider", "gemini",
+                "--no-cache");
 
         assertThat(code).isEqualTo(1);
         assertThat(err.toString()).contains("GEMINI_API_KEY").contains("--provider dry-run");
@@ -71,12 +72,13 @@ class ApiDocsCliTest {
 
     @Test
     void usesExitCodeTwoForAnalysisProblems() throws IOException {
-        assertThat(run(Map.of(), "generate", dir.resolve("nope").toString())).isEqualTo(2);
+        assertThat(run(Map.of(), "generate", dir.resolve("nope").toString(), "--no-cache")).isEqualTo(2);
         assertThat(err.toString()).contains("Project directory not found");
 
         Path plain = Files.createDirectories(dir.resolve("plain/src/main/java"));
         Files.writeString(plain.resolve("A.java"), "public record A(String x) {}");
-        assertThat(run(Map.of(), "generate", dir.resolve("plain").toString(), "-o", dir.resolve("docs").toString()))
+        assertThat(run(Map.of(), "generate", dir.resolve("plain").toString(), "-o", dir.resolve("docs").toString(),
+                "--no-cache"))
                 .isEqualTo(2);
         assertThat(err.toString()).contains("No @RestController");
     }
@@ -85,7 +87,8 @@ class ApiDocsCliTest {
     void rejectsSecretsInTheConfigFile() throws IOException {
         Path config = Files.writeString(dir.resolve("bad.yml"), "llm:\n  apiKey: abc\n");
 
-        int code = run(Map.of(), "generate", SAMPLE, "--config", config.toString(), "-o", dir.resolve("docs").toString());
+        int code = run(Map.of(), "generate", SAMPLE, "--config", config.toString(),
+                "-o", dir.resolve("docs").toString(), "--no-cache");
 
         assertThat(code).isEqualTo(1);
         assertThat(err.toString()).contains("Secrets are not allowed");
@@ -107,7 +110,8 @@ class ApiDocsCliTest {
         CliContext context = new CliContext(Map.of(), new PrintWriter(out, true), new PrintWriter(err, true),
                 new LlmClientFactory(), DocumentationPipeline::new, cancelled);
 
-        int code = ApiDocsCli.execute(new String[] {"generate", SAMPLE, "-o", dir.resolve("docs").toString()}, context);
+        int code = ApiDocsCli.execute(new String[] {"generate", SAMPLE, "-o", dir.resolve("docs").toString(),
+                "--no-cache"}, context);
 
         assertThat(code).isEqualTo(130);
         assertThat(err.toString()).contains("Cancelled.");
@@ -130,7 +134,7 @@ class ApiDocsCliTest {
         // built, so no request is made. Verbose mode also prints the stack trace and its causes.
         int code = run(Map.of("APIDOCS_KEY", secret + "\n"), "generate", SAMPLE, "-o", dir.resolve("docs").toString(),
                 "--provider", "custom", "--model", "m", "--base-url", "http://localhost:1/v1",
-                "--api-key-env", "APIDOCS_KEY", "-v");
+                "--api-key-env", "APIDOCS_KEY", "--no-cache", "-v");
 
         assertThat(code).isEqualTo(1);
         assertThat(err.toString()).contains("Invalid configuration").doesNotContain(secret);
@@ -148,7 +152,8 @@ class ApiDocsCliTest {
 
     @Test
     void reportsJvmErrorsAsUnexpectedFailuresWithExitCodeOne() {
-        int code = runWithPipelineThrowingAnError("generate", SAMPLE, "-o", dir.resolve("docs").toString());
+        int code = runWithPipelineThrowingAnError("generate", SAMPLE, "-o", dir.resolve("docs").toString(),
+                "--no-cache");
 
         assertThat(code).isEqualTo(1);
         assertThat(err.toString().strip()).isEqualTo("Unexpected error: java.lang.StackOverflowError");
@@ -160,7 +165,8 @@ class ApiDocsCliTest {
 
     @Test
     void printsTheStackTraceOfJvmErrorsOnlyInVerboseMode() {
-        int code = runWithPipelineThrowingAnError("generate", SAMPLE, "-o", dir.resolve("docs").toString(), "-v");
+        int code = runWithPipelineThrowingAnError("generate", SAMPLE, "-o", dir.resolve("docs").toString(), "--no-cache",
+                "-v");
 
         assertThat(code).isEqualTo(1);
         assertThat(err.toString()).startsWith("Unexpected error: java.lang.StackOverflowError")

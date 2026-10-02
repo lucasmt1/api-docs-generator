@@ -61,6 +61,54 @@ class ProjectConfigLoaderTest {
         assertThatThrownBy(() -> new ProjectConfigLoader().load(snake)).isInstanceOf(ConfigException.class);
     }
 
+    @ParameterizedTest(name = "[{index}] {1}")
+    @CsvSource(delimiter = '|', textBlock = """
+            'llm: {provider: openai, apiKeyEnv: sk-proj-AbCdEfGhIjKlMnOpQrSt}'                 | llm.apiKeyEnv          | sk-proj-AbCdEfGhIjKlMnOpQrSt
+            'context: {instructions: "Test with AIzaSyB1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r."}'   | context.instructions   | AIzaSyB1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r
+            'context: {glossary: {Access: ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789}}'          | context.glossary.Access | ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789
+            'exclude: ["**/legacy/**", AKIAIOSFODNN7EXAMPLE]'                                   | exclude[1]             | AKIAIOSFODNN7EXAMPLE
+            'notes: {deep: [{x: xoxb-1234567890-abcdefghij}]}'                                  | notes.deep[0].x        | xoxb-1234567890-abcdefghij
+            'llm: {provider: custom, apiKeyEnv: gsk_AbCdEfGhIjKlMnOpQrStUv01}'                 | llm.apiKeyEnv          | gsk_AbCdEfGhIjKlMnOpQrStUv01
+            'context: {description: "Model token hf_AbCdEfGhIjKlMnOpQrStUv01"}'                | context.description    | hf_AbCdEfGhIjKlMnOpQrStUv01
+            'context: {glossary: {Grok: xai-AbCdEfGhIjKlMnOpQrStUv01}}'                        | context.glossary.Grok  | xai-AbCdEfGhIjKlMnOpQrStUv01
+            'exclude: [pplx-AbCdEfGhIjKlMnOpQrStUv01]'                                          | exclude[0]             | pplx-AbCdEfGhIjKlMnOpQrStUv01
+            """)
+    void rejectsSecretValuesAnywhereWithoutEchoingThem(String yaml, String path, String secret) throws IOException {
+        Path leaky = file(yaml + "\n");
+
+        assertThatThrownBy(() -> new ProjectConfigLoader().load(leaky))
+                .isInstanceOf(ConfigException.class)
+                .hasMessage(".apidocs.yml " + path
+                        + " looks like a secret (API key/token); keep secrets in environment variables.")
+                .hasMessageNotContaining(secret);
+    }
+
+    @Test
+    void rejectsKeysThatLookLikeSecretsWithoutEchoingThem() throws IOException {
+        Path leaky = file("context:\n  glossary:\n    sk-proj-AbCdEfGhIjKlMnOpQrSt: our key\n");
+
+        assertThatThrownBy(() -> new ProjectConfigLoader().load(leaky))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("context.glossary")
+                .hasMessageContaining("looks like a secret")
+                .hasMessageNotContaining("sk-proj-");
+    }
+
+    @Test
+    void acceptsOrdinaryTextThatOnlyResemblesASecretFormat() throws IOException {
+        ProjectConfigFile config = new ProjectConfigLoader().load(file("""
+                context:
+                  instructions: "Follow the risk-assessment-guidelines; tokens are described in docs/sk-notes.md."
+                  glossary:
+                    Bearer: "Whoever holds a bearer token"
+                exclude:
+                  - "**/task-management-service/**"
+                """)).orElseThrow();
+
+        assertThat(config.context().instructions()).startsWith("Follow the risk-assessment-guidelines");
+        assertThat(config.exclude()).containsExactly("**/task-management-service/**");
+    }
+
     @Test
     void treatsYamlNullsAndBlankValuesAsNotSet() throws IOException {
         ProjectConfigFile config = new ProjectConfigLoader().load(file("""

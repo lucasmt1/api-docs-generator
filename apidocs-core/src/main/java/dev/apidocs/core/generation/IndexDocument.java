@@ -9,6 +9,11 @@ import java.util.List;
 public final class IndexDocument {
 
     public String render(DocumentContext context, List<Warning> warnings) {
+        return render(context, warnings, false);
+    }
+
+    /** {@code withPrompts}: the folder also holds the dry-run {@code prompts/}, which the index then explains. */
+    public String render(DocumentContext context, List<Warning> warnings, boolean withPrompts) {
         Messages m = context.messages();
         ApiModel model = context.model();
         MarkdownWriter md = new MarkdownWriter()
@@ -20,8 +25,11 @@ public final class IndexDocument {
                         List.of(link(m.get("doc.api.title"), "api-reference.md"), m.get("index.doc.api")),
                         List.of(link(m.get("doc.architecture.title"), "architecture-overview.md"), m.get("index.doc.architecture")),
                         List.of(link("openapi.yaml", "openapi.yaml"), m.get("index.doc.openapi")),
-                        List.of(link("model.json", "model.json"), m.get("index.doc.model"))))
-                .heading(2, m.get("index.summary"))
+                        List.of(link("model.json", "model.json"), m.get("index.doc.model"))));
+        if (withPrompts) {
+            md.paragraph(m.get("index.prompts"));
+        }
+        md.heading(2, m.get("index.summary"))
                 .table(List.of(m.get("index.col.metric"), m.get("index.col.value")), Metrics.summary(model, m))
                 .heading(2, m.get("index.warnings") + " (" + warnings.size() + ")");
         if (warnings.isEmpty()) {

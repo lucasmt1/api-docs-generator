@@ -175,9 +175,36 @@ class OpenAiCompatibleLlmClientTest {
 
             for (String expected : List.of("HTTP 401", "Invalid JSON", "no message")) {
                 assertThatThrownBy(() -> client.complete(request()))
-                        .isInstanceOfSatisfying(LlmException.class,
-                                e -> assertThat(chainOf(e)).contains("***").doesNotContain(key))
+                        .isInstanceOfSatisfying(LlmException.class, e -> {
+                            assertThat(e.detail()).contains("***").doesNotContain(key);
+                            assertThat(chainOf(e)).doesNotContain(key);
+                        })
                         .hasMessageContaining(expected);
+            }
+        }
+    }
+
+    @Test
+    void keepsServerTextOutOfTheMessageAndPutsItRedactedIntoTheDetail() {
+        String key = "sk-proj-AbCdEfGhIjKlMnOpQrSt";
+        String body = "{\"error\":{\"message\":\"Key sk-proj-AbCd... of organization org-AbC123 has no access to "
+                + "project 'projects/123456789'\"}}";
+        try (StubHttpServer server = new StubHttpServer()) {
+            server.enqueue(Reply.json(403, body))
+                    .enqueue(Reply.json(200, "Not JSON: " + body))
+                    .enqueue(Reply.json(200, "{\"choices\":[]," + body.substring(1)));
+            OpenAiCompatibleLlmClient client = client(server, key, new Options(JsonMode.JSON_OBJECT, true, "max_tokens"));
+
+            for (String summary : List.of("HTTP 403 from the LLM provider", "Invalid JSON from the LLM provider",
+                    "Unexpected answer from the LLM provider (no message in the first choice)")) {
+                assertThatThrownBy(() -> client.complete(request()))
+                        .isInstanceOfSatisfying(LlmException.class, e -> {
+                            assertThat(e.getMessage()).isEqualTo(summary);
+                            assertThat(e.detail()).startsWith("127.0.0.1: ")
+                                    .contains("org-AbC123", "projects/123456789", "Key ***...")
+                                    .doesNotContain("sk-proj-AbCd");
+                            assertThat(chainOf(e)).doesNotContain("org-AbC123").doesNotContain("127.0.0.1");
+                        });
             }
         }
     }
@@ -248,8 +275,10 @@ class OpenAiCompatibleLlmClientTest {
                 .isInstanceOfSatisfying(LlmException.class, e -> {
                     assertThat(e.retryable()).isTrue();
                     assertThat(e).hasCauseInstanceOf(IOException.class);
-                })
-                .hasMessageContaining("failed");
+                    assertThat(e.getMessage()).isEqualTo("Request to the LLM provider failed ("
+                            + e.getCause().getClass().getSimpleName() + ")").doesNotContain("127.0.0.1");
+                    assertThat(e.detail()).startsWith("127.0.0.1");
+                });
         assertThat(sleeps).containsExactly(Duration.ofSeconds(2), Duration.ofSeconds(4));
     }
 
@@ -358,8 +387,10 @@ class OpenAiCompatibleLlmClientTest {
                 .isInstanceOfSatisfying(LlmException.class, e -> {
                     assertThat(e.retryable()).isFalse();
                     assertThat(e.getCause()).isNull();
+                    assertThat(e.detail()).isEqualTo("127.0.0.1");
                 })
-                .hasMessageContaining("Invalid request");
+                .hasMessageContaining("Invalid request to the LLM provider")
+                .hasMessageNotContaining("127.0.0.1");
         assertThat(sleeps).isEmpty();
     }
 

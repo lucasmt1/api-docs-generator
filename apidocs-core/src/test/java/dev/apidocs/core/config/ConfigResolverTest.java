@@ -36,6 +36,9 @@ class ConfigResolverTest {
         assertThat(config.llm().effort()).isEqualTo("high");
         assertThat(config.language()).isEqualTo("pt-BR");
         assertThat(config.cacheEnabled()).isTrue();
+        // per user, never inside the analyzed project or the current directory: cached answers quote its code
+        assertThat(config.cacheDir()).isAbsolute()
+                .isEqualTo(Path.of(System.getProperty("user.home"), ".cache", "apidocs").toAbsolutePath().normalize());
         assertThat(config.strict()).isFalse();
         assertThat(config.maxOutputTokens()).isEqualTo(16_000);
         assertThat(config.maxInputTokens()).isEqualTo(ProviderPreset.DRY_RUN.maxInputTokens());
@@ -195,6 +198,20 @@ class ConfigResolverTest {
         Files.writeString(dir.resolve(".apidocs.yml"), "llm:\n  provider: openai\n  apiKeyEnv: GEMINI_API_KEY\n");
         assertThatThrownBy(() -> resolver.resolve(overrides(dir, null, null, null), Map.of()))
                 .isInstanceOf(ConfigException.class).hasMessageContaining("GEMINI_API_KEY");
+    }
+
+    @Test
+    void neverEchoesAKeyPastedAsTheFilesKeyVariable() throws IOException {
+        for (String pasted : List.of("abcd1234efgh5678ijkl9012mnop", "my key value", "key=abc")) {
+            Files.writeString(dir.resolve(".apidocs.yml"), "llm:\n  provider: openai\n  apiKeyEnv: \"" + pasted + "\"\n");
+
+            assertThatThrownBy(() -> resolver.resolve(overrides(dir, null, null, null), Map.of()))
+                    .isInstanceOf(ConfigException.class)
+                    .hasMessageContaining(".apidocs.yml llm.apiKeyEnv must be the NAME of an environment variable")
+                    .hasMessageContaining("APIDOCS_")
+                    .hasMessageContaining("--api-key-env")
+                    .hasMessageNotContaining(pasted);
+        }
     }
 
     @Test

@@ -6,6 +6,13 @@ import dev.apidocs.core.ai.narrative.GlossaryEntry;
 import dev.apidocs.core.ai.narrative.RuleGroup;
 import dev.apidocs.core.model.Warning;
 import dev.apidocs.core.testsupport.FakeLlmClient;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import org.junit.jupiter.api.Test;
 
 class StructuredGeneratorTest {
@@ -90,5 +97,49 @@ class StructuredGeneratorTest {
                 new StructuredGenerator(dryRun).generate("p", "s", "u", GlossaryEntry.class, 1);
         assertThat(dry.value()).isEmpty();
         assertThat(dry.warnings()).isEmpty();
+    }
+
+    @Test
+    void persistsOnlyTheSummaryOfAProviderFailureAndLogsItsDetailToTheConsole() {
+        FakeLlmClient detailed = new FakeLlmClient(request -> {
+            throw new LlmException("HTTP 429 from the LLM provider",
+                    "api.example.test: Quota exceeded for organization org-AbC123", true);
+        });
+        FakeLlmClient bare = new FakeLlmClient(request -> {
+            throw new LlmException("HTTP 500 from the LLM provider", true);
+        });
+        Logger logger = Logger.getLogger(StructuredGenerator.class.getName());
+        List<LogRecord> records = new CopyOnWriteArrayList<>();
+        Handler capture = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                records.add(record);
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        logger.addHandler(capture);
+        try {
+            assertThat(new StructuredGenerator(detailed).generate("controller-A", "s", "u", GlossaryEntry.class, 1)
+                    .warnings())
+                    .containsExactly(new Warning("LLM_CALL_FAILED", "HTTP 429 from the LLM provider", "controller-A"));
+            assertThat(new StructuredGenerator(bare).generate("technical-doc", "s", "u", GlossaryEntry.class, 1)
+                    .warnings())
+                    .containsExactly(new Warning("LLM_CALL_FAILED", "HTTP 500 from the LLM provider", "technical-doc"));
+        } finally {
+            logger.removeHandler(capture);
+        }
+
+        assertThat(records).allSatisfy(record -> assertThat(record.getLevel()).isEqualTo(Level.WARNING))
+                .extracting(record -> new SimpleFormatter().formatMessage(record))
+                .containsExactly(
+                        "LLM call failed for controller-A: api.example.test: Quota exceeded for organization org-AbC123",
+                        "LLM call failed for technical-doc: HTTP 500 from the LLM provider");
     }
 }

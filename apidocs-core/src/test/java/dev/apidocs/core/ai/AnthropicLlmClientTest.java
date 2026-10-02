@@ -11,6 +11,8 @@ import dev.apidocs.core.ai.narrative.GlossaryEntry;
 import dev.apidocs.core.support.JsonSupport;
 import dev.apidocs.core.testsupport.StubHttpServer;
 import dev.apidocs.core.testsupport.StubHttpServer.Reply;
+import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -166,8 +168,7 @@ class AnthropicLlmClientTest {
             server.enqueue(Reply.sse(withoutUsage));
 
             assertThatThrownBy(() -> client(server).complete(request()))
-                    .isInstanceOf(LlmException.class)
-                    .hasMessageContaining("usage");
+                    .isInstanceOfSatisfying(LlmException.class, e -> assertThat(e.detail()).contains("usage"));
         }
     }
 
@@ -235,8 +236,31 @@ class AnthropicLlmClientTest {
         }
 
         assertThatThrownBy(() -> client.complete(request()))
-                .isInstanceOfSatisfying(LlmException.class, e -> assertThat(e.retryable()).isTrue())
+                .isInstanceOfSatisfying(LlmException.class, e -> {
+                    assertThat(e.retryable()).isTrue();
+                    // the SDK only says "Request failed"; the reason is in its causes
+                    assertThat(e.detail()).contains("; caused by ConnectException: ");
+                })
                 .hasMessageContaining("failed");
+    }
+
+    @Test
+    void redactsEveryCauseCopiedIntoTheDetail() {
+        String key = "my-gateway-key-0123456789";
+        RuntimeException chain = new RuntimeException("Request failed", new IOException("proxy rejected " + key,
+                new SocketTimeoutException()));
+
+        assertThat(AnthropicLlmClient.detail(chain, key)).isEqualTo(
+                "Request failed; caused by IOException: proxy rejected ***; caused by SocketTimeoutException");
+    }
+
+    @Test
+    void boundsTheCauseChainCopiedIntoTheDetail() {
+        RuntimeException loop = new RuntimeException("outer");
+        RuntimeException inner = new RuntimeException("inner", loop);
+        loop.initCause(inner);
+
+        assertThat(AnthropicLlmClient.detail(loop, null).split("; caused by ")).hasSizeLessThanOrEqualTo(17);
     }
 
     @Test
@@ -346,6 +370,45 @@ class AnthropicLlmClientTest {
                         assertThat(chainOf(e)).doesNotContain(secret);
                     });
             assertThat(server.requests()).isEmpty();
+        }
+    }
+
+    @Test
+    void keepsApiErrorTextOutOfTheMessageAndPutsItRedactedIntoTheDetail() {
+        String key = "sk-ant-api03-AbCdEfGhIjKlMnOpQrSt";
+        try (StubHttpServer server = new StubHttpServer()) {
+            server.enqueue(Reply.json(403, "{\"type\":\"error\",\"error\":{\"type\":\"permission_error\",\"message\":"
+                    + "\"Key sk-ant-api03... of organization org-AbC123 may not use this model (sent " + key + ")\"}}"));
+
+            assertThatThrownBy(() -> AnthropicLlmClient.create(key, server.baseUrl(), "claude-opus-5-5", "high", 0)
+                    .complete(request()))
+                    .isInstanceOfSatisfying(LlmException.class, e -> {
+                        assertThat(e.getMessage()).isEqualTo("Anthropic API error (HTTP 403)");
+                        assertThat(e.detail()).contains("org-AbC123", "Key ***...", "(sent ***)")
+                                .doesNotContain("sk-ant-api03");
+                        assertThat(chainOf(e)).doesNotContain("sk-ant-api03");
+                    });
+        }
+    }
+
+    @Test
+    void keepsStreamErrorTextOutOfTheMessage() {
+        String overloaded = "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\","
+                + "\"message\":\"Overloaded for organization org-AbC123\"}}\n\n";
+        String odd = "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"Org org-AbC123 blocked\","
+                + "\"message\":\"no\"}}\n\n";
+        try (StubHttpServer server = new StubHttpServer()) {
+            server.enqueue(Reply.sse(overloaded)).enqueue(Reply.sse(odd));
+            AnthropicLlmClient client = client(server);
+
+            assertThatThrownBy(() -> client.complete(request()))
+                    .isInstanceOfSatisfying(LlmException.class, e -> {
+                        assertThat(e.getMessage()).isEqualTo("Anthropic stream error (overloaded_error)");
+                        assertThat(e.detail()).contains("org-AbC123");
+                    });
+            assertThatThrownBy(() -> client.complete(request()))
+                    .isInstanceOfSatisfying(LlmException.class,
+                            e -> assertThat(e.getMessage()).isEqualTo("Anthropic stream error (unknown)"));
         }
     }
 

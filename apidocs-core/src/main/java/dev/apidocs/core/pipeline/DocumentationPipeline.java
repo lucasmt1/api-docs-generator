@@ -6,6 +6,7 @@ import dev.apidocs.core.CancellationToken;
 import dev.apidocs.core.ai.DryRunLlmClient;
 import dev.apidocs.core.ai.LlmClient;
 import dev.apidocs.core.ai.LlmException;
+import dev.apidocs.core.ai.LlmSettings;
 import dev.apidocs.core.analysis.JavaSourceParser;
 import dev.apidocs.core.analysis.ParseOutcome;
 import dev.apidocs.core.config.GeneratorConfig;
@@ -125,9 +126,11 @@ public final class DocumentationPipeline {
     private Map<String, String> render(GeneratorConfig config, LlmClient llm, ApiModel model,
             List<ArchitectureAlert> alerts, NarrativeResult narrative, List<Warning> warnings, Instant start) {
         DocumentContext context = new DocumentContext(model, narrative.narratives(), alerts,
-                Messages.forLanguage(config.language()), llm.id());
+                Messages.forLanguage(config.language()), narrativeSource(config.llm()));
+        List<DryRunLlmClient.RecordedPrompt> prompts =
+                llm instanceof DryRunLlmClient dryRun ? dryRun.recordedPrompts() : List.of();
         Map<String, String> files = new LinkedHashMap<>();
-        files.put(OutputFiles.README, new IndexDocument().render(context, warnings));
+        files.put(OutputFiles.README, new IndexDocument().render(context, warnings, !prompts.isEmpty()));
         files.put(OutputFiles.TECHNICAL_DOCUMENTATION, new TechnicalDocument().render(context));
         files.put(OutputFiles.API_REFERENCE, new ApiReferenceDocument().render(context));
         files.put(OutputFiles.ARCHITECTURE_OVERVIEW, new ArchitectureDocument().render(context));
@@ -137,11 +140,23 @@ public final class DocumentationPipeline {
         files.put(OutputFiles.REPORT, JsonSupport.toPrettyJson(new GenerationReport(ApiDocsVersion.get(),
                 config.llm().provider().id(), config.llm().model(), config.language(), end.toString(),
                 Duration.between(start, end).toMillis(), narrative.llmCalls(), narrative.usage(), warnings)));
-        if (llm instanceof DryRunLlmClient dryRun) {
-            dryRun.recordedPrompts().forEach(prompt ->
-                    files.put(OutputFiles.PROMPTS_DIR + "/" + prompt.fileName(), prompt.toMarkdown()));
+        if (!prompts.isEmpty()) {
+            prompts.forEach(prompt -> files.put(OutputFiles.PROMPTS_DIR + "/" + prompt.fileName(), prompt.toMarkdown()));
+            // the prompts quote the source code: keep them out of anything that commits the output folder
+            files.put(OutputFiles.PROMPTS_DIR + "/" + OutputFiles.PROMPTS_GITIGNORE, OutputFiles.PROMPTS_GITIGNORE_CONTENT);
         }
         return files;
+    }
+
+    /**
+     * Provider and model as configured, the values generation-report.json records (e.g. {@code gemini /
+     * gemini-3.8-flash}). Never the client's id: for OpenAI-compatible servers it names the endpoint's host, which
+     * may be internal and does not belong in published documents.
+     */
+    static String narrativeSource(LlmSettings llm) {
+        String provider = llm.provider().id();
+        String model = llm.model() == null ? "" : llm.model();
+        return model.isBlank() || model.equals(provider) ? provider : provider + " / " + model;
     }
 
     private static Map<String, Integer> counters(Object... keysAndValues) {
