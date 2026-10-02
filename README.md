@@ -1,5 +1,7 @@
 # API Docs Generator
 
+**English** | [Português](README.pt-BR.md)
+
 Point it at a Spring Boot codebase and get a **Technical Documentation**, an **API Reference**, an **Architectural Overview** and an **OpenAPI 3.1** file.
 Facts (paths, parameters, fields, validation rules, status codes, diagrams) are extracted from the source code; explanations (summaries, business rules, examples, architectural commentary) are written by an LLM of your choice.
 
